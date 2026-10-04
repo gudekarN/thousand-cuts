@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 1.8 (Model pipelines and leakage test)
-- Next task: Task 1.9 (Metrics)
+- Last completed task: Task 1.9 (Metrics)
+- Next task: Task 1.10 (Paths, CSV store, JSON store)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -89,3 +89,4 @@
 | 2026-10-04 | Phase 1 | Implemented missing-value injector (noise.py, test_noise_missing.py); 9 tests passing (86 total) | Task 1.7 |
 | 2026-10-04 | Phase 1 | Implemented compound noise logic (noise.py, test_noise_compound.py); 8 tests passing (94 total) | Task 1.8 |
 | 2026-10-04 | Phase 1 | Implemented model pipelines and leakage tests (pipelines.py, test_pipelines.py); 13 tests passing (107 total) | Task 1.9 |
+| 2026-10-04 | Phase 1 | Implemented evaluation metrics (metrics.py, test_metrics.py); 8 tests passing (115 total) | Task 1.10 |
