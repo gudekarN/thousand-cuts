@@ -25,6 +25,7 @@ __all__ = [
     "make_rng",
     "clean_stats",
     "inject_label",
+    "inject_gaussian",
 ]
 
 
@@ -148,3 +149,59 @@ def inject_label(
         y_noisy[idx] = classes_arr[(pos + offset) % n_classes]
 
     return y_noisy, n_flipped
+
+
+def inject_gaussian(
+    X: np.ndarray,
+    k: float,
+    std_clean: np.ndarray,
+    rng: np.random.Generator,
+) -> Tuple[np.ndarray, int]:
+    """Inject Gaussian noise into feature matrix.
+
+    Formula: X + rng.normal(0, 1, X.shape) * (k * std_clean)
+    Columns with std_clean == 0 stay unchanged.
+    k = 0 returns an identical copy.
+    Never modifies input array in place.
+
+    Args:
+        X: 2D feature matrix of shape (n_samples, n_features).
+        k: Gaussian noise severity multiplier (>= 0).
+        std_clean: Per-column standard deviations from clean train set, shape (n_features,).
+        rng: NumPy Generator instance.
+
+    Returns:
+        Tuple of (X_noisy, n_cells_perturbed).
+        When k == 0, n_cells_perturbed is 0.
+        When k > 0, n_cells_perturbed equals rows * non-zero-std columns.
+    """
+    if k < 0.0:
+        raise ValueError(f"k must be non-negative, got {k}")
+
+    X_arr = np.asarray(X, dtype=np.float64)
+    if X_arr.ndim != 2:
+        raise ValueError(f"X must be a 2D array, got shape {X_arr.shape}")
+
+    std_arr = np.asarray(std_clean, dtype=np.float64)
+    if std_arr.ndim != 1 or len(std_arr) != X_arr.shape[1]:
+        raise ValueError(
+            f"std_clean must be 1D with length matching X features ({X_arr.shape[1]}), got shape {std_arr.shape}"
+        )
+
+    if k == 0.0:
+        return X_arr.copy(), 0
+
+    nonzero_mask = std_arr > 0.0
+    n_nonzero_cols = int(np.sum(nonzero_mask))
+    n_cells_perturbed = int(X_arr.shape[0] * n_nonzero_cols)
+
+    # Standard normal draw of shape X.shape scaled by (k * std_clean)
+    noise = rng.normal(0.0, 1.0, size=X_arr.shape) * (k * std_arr)
+    X_noisy = X_arr + noise
+
+    # Ensure zero-std columns are strictly unchanged
+    if not np.all(nonzero_mask):
+        zero_cols = ~nonzero_mask
+        X_noisy[:, zero_cols] = X_arr[:, zero_cols]
+
+    return X_noisy, n_cells_perturbed
