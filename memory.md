@@ -78,3 +78,4 @@
 | 2026-10-04 | Planning | Research, design, project files, folder structure | Phase 0 |
 | 2026-10-04 | Planning | Execution plan reviewed and finalized; added D-020 to D-025 and locked sequential execution / single-process Full safeguards | Phase 0, Task 0.1 |
 | 2026-10-04 | Planning | Documentation consistency fix: updated 47 stale Architecture section references in execution_plan.md (sections renumbered after 4.2/4.3/4.6/5/6.6 were added); removed stale custom-seed open item from memory.md (already resolved as D-024); cross-document audit passed with no methodology changes; two stale references found in rules.md (lines 14 and 138) reported to user for decision | Phase 0, Task 0.1 |
+| 2026-10-04 | Planning | Fixed final 2 stale Architecture refs in rules.md: R-M2 (models) 4.2→4.4; API error shape section 7→8. All seven docs now consistent. No methodology changes. | Phase 0, Task 0.1 |

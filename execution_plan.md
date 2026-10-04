@@ -76,6 +76,7 @@ Tests: test_config asserts the key values. test_structure asserts that every fol
 Finish: update memory.md, git commit -m "feat(core): methodology constants", report in 10 lines or less, then STOP. Do not start the next task.
 ```
 
+
 **Expected output:** venv works; the repository already contains the approved project files/skeleton; `config.py` is created only in Task 0.2.
 **Validation:** `pytest` green; `python --version` is 3.11.
 **GATE 0:** STOP. I check the environment and constants. Antigravity must not start Phase 1 until I type `APPROVED PHASE 0`.

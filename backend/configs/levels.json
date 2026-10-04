@@ -1,0 +1,31 @@
+{
+  "levels_version": "1.0.0",
+  "active_table": "A",
+  "frozen": false,
+  "frozen_at": null,
+  "frozen_reason": null,
+  "config_hash": null,
+  "level_indices": [0, 1, 2, 3, 4, 5],
+  "tables": {
+    "A": {
+      "label_flip_rate":   [0, 0.05, 0.10, 0.20, 0.30, 0.40],
+      "gaussian_k":        [0, 0.25, 0.5, 1.0, 1.5, 2.0],
+      "outlier_cell_rate": [0, 0.02, 0.05, 0.10, 0.15, 0.20],
+      "missing_cell_rate": [0, 0.10, 0.20, 0.30, 0.40, 0.50]
+    },
+    "S": {
+      "label_flip_rate":   [0, 0.10, 0.20, 0.30, 0.40, 0.45],
+      "gaussian_k":        [0, 0.5, 1.0, 2.0, 3.0, 4.0],
+      "outlier_cell_rate": [0, 0.05, 0.10, 0.20, 0.30, 0.40],
+      "missing_cell_rate": [0, 0.20, 0.40, 0.60, 0.70, 0.80]
+    },
+    "M": {
+      "label_flip_rate":   [0, 0.02, 0.05, 0.10, 0.15, 0.20],
+      "gaussian_k":        [0, 0.1, 0.25, 0.5, 0.75, 1.0],
+      "outlier_cell_rate": [0, 0.01, 0.02, 0.05, 0.08, 0.10],
+      "missing_cell_rate": [0, 0.05, 0.10, 0.15, 0.20, 0.30]
+    }
+  },
+  "_notes": "Table A is the approved initial table. S (stronger) and M (milder) are predefined fallbacks, written before any result existed. See rules.md section 2. Never hand-edit values; only switch active_table via validate.py.",
+  "calibration_log": []
+}
