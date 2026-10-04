@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 1.16 (Breaking points)
-- Next task: Task 1.17 (Synergy)
+- Last completed task: Task 1.17 (Synergy)
+- Next task: Task 1.18 (Robustness and output writer)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -98,3 +98,4 @@
 | 2026-10-04 | Phase 1 | Task 1.14 corrective fix: official resume now calls verify_frozen_hash(); added STAGE_FULL test; 11 test_execute tests, 156 total passing | Task 1.14 fix |
 | 2026-10-04 | Phase 1 | Implemented baselines and summary analysis (analysis.py, test_analysis_summary.py); 2 tests passing (158 total) | Task 1.15 |
 | 2026-10-04 | Phase 1 | Implemented breaking points calculation (analysis.py, test_analysis_breaking.py); 1 test passing (159 total) | Task 1.16 |
+| 2026-10-04 | Phase 1 | Implemented synergy secondary analysis (analysis.py, test_analysis_synergy.py); 1 test passing (160 total) | Task 1.17 |

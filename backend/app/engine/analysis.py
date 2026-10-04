@@ -206,3 +206,80 @@ def compute_breaking_points(df: pd.DataFrame, summary: pd.DataFrame, baselines: 
         ])
         
     return pd.DataFrame(results)
+
+
+import logging
+
+def compute_synergy(summary: pd.DataFrame, baselines: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute synergy for compound combos.
+    """
+    results = []
+    
+    if summary.empty or baselines.empty:
+        return pd.DataFrame(columns=[
+            "dataset", "model", "combo", "level", "baseline_f1", "compound_f1",
+            "drop_compound", "sum_single_drops", "synergy", "f1_floor_flag"
+        ])
+    
+    compounds = summary[summary["combo"].str.contains(r"\+", na=False, regex=True) & (summary["level"] > 0)]
+    
+    for _, row in compounds.iterrows():
+        dataset = row["dataset"]
+        model = row["model"]
+        combo = row["combo"]
+        level = int(row["level"])
+        compound_f1 = float(row["f1_mean"])
+        
+        b_df = baselines[(baselines["dataset"] == dataset) & (baselines["model"] == model)]
+        if b_df.empty:
+            continue
+        baseline_f1 = float(b_df.iloc[0]["f1_mean"])
+        
+        drop_compound = baseline_f1 - compound_f1
+        
+        components = combo.split("+")
+        sum_single_drops = 0.0
+        skip = False
+        
+        for comp in components:
+            comp_df = summary[
+                (summary["dataset"] == dataset) &
+                (summary["model"] == model) &
+                (summary["combo"] == comp) &
+                (summary["level"] == level)
+            ]
+            if comp_df.empty:
+                logging.warning(f"Missing component '{comp}' for combo '{combo}' at level {level} in {dataset}/{model}. Skipping.")
+                skip = True
+                break
+            
+            comp_f1 = float(comp_df.iloc[0]["f1_mean"])
+            sum_single_drops += (baseline_f1 - comp_f1)
+            
+        if skip:
+            continue
+            
+        synergy = drop_compound - sum_single_drops
+        f1_floor_flag = sum_single_drops >= baseline_f1
+        
+        results.append({
+            "dataset": dataset,
+            "model": model,
+            "combo": combo,
+            "level": level,
+            "baseline_f1": baseline_f1,
+            "compound_f1": compound_f1,
+            "drop_compound": drop_compound,
+            "sum_single_drops": sum_single_drops,
+            "synergy": synergy,
+            "f1_floor_flag": bool(f1_floor_flag),
+        })
+        
+    if not results:
+        return pd.DataFrame(columns=[
+            "dataset", "model", "combo", "level", "baseline_f1", "compound_f1",
+            "drop_compound", "sum_single_drops", "synergy", "f1_floor_flag"
+        ])
+        
+    return pd.DataFrame(results)
