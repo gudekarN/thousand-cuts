@@ -393,11 +393,314 @@ def check_noise_rates(dataset: str = DATASET_BREAST_CANCER, seed: int = 0):
 
 
 # ---------------------------------------------------------------------------
+# Check 5: Exact reproducibility
+# ---------------------------------------------------------------------------
+
+_REPRO_SUBSET = {
+    "dataset": DATASET_BREAST_CANCER,
+    "models": ["logreg", "svm_rbf", "decision_tree", "random_forest"],
+    "noises": ["label", "label+gaussian"],
+    "levels": [0, 3, 5],
+    "seed": 0,
+}
+
+
+def check_reproducibility(mvp_csv_path=None, run_meta=None):
+    """Check 5: re-running fixed subset gives byte-identical metrics.
+
+    If mvp_csv_path exists, compare against MVP results.
+    Otherwise run twice in temp dirs and compare the two runs.
+    """
+    import tempfile
+    import pandas as pd
+    from app.engine.runner import build_plan, execute_plan, FitSpec
+    from app.core.hashing import compute_config_hash
+    from app.core.levels import load_levels
+
+    subset = _REPRO_SUBSET
+    custom_request = {
+        "dataset": subset["dataset"],
+        "models": subset["models"],
+        "noises": subset["noises"],
+        "mode": "sweep",
+        "seed_count": 1,  # seed 0 only
+    }
+    lvl = load_levels()
+    meta = run_meta or {
+        "run_id": "repro-check",
+        "run_type": "custom",
+        "stage": "custom",
+        "config_hash": compute_config_hash(),
+        "methodology_version": "1.0",
+        "levels_version": lvl.get("levels_version", ""),
+        "levels_frozen": lvl.get("frozen", False),
+        "requested_config": custom_request,
+    }
+
+    plan = build_plan(custom_request=custom_request)
+
+    failures = []
+    details = []
+    compare_source = ""
+
+    def _run_to_df(out_dir):
+        execute_plan(plan, out_dir, meta)
+        return pd.read_csv(out_dir / "raw_results.csv")
+
+    KEY_COLS = ["dataset", "model", "combo", "level", "seed"]
+    METRIC_COLS = ["macro_f1", "accuracy", "status"]
+
+    if mvp_csv_path is not None and Path(mvp_csv_path).exists():
+        # Compare fresh run against MVP
+        ref_df = pd.read_csv(mvp_csv_path)
+        compare_source = "mvp_csv"
+        with tempfile.TemporaryDirectory() as td:
+            fresh_df = _run_to_df(Path(td))
+
+        for df_src, label in [(fresh_df, "fresh"), (ref_df, "mvp")]:
+            pass  # just proceed to merge
+
+        # Filter ref to the subset scope
+        ref_sub = ref_df[
+            (ref_df["dataset"] == subset["dataset"])
+            & (ref_df["model"].isin(subset["models"]))
+            & (ref_df["seed"] == subset["seed"])
+        ].copy()
+
+        # Only keep rows that appear in both (by key)
+        merged = fresh_df.merge(ref_sub, on=KEY_COLS, suffixes=("_fresh", "_ref"))
+        for col in ["macro_f1", "accuracy"]:
+            mismatch = merged[abs(merged[f"{col}_fresh"] - merged[f"{col}_ref"]) > 1e-9]
+            for _, row in mismatch.iterrows():
+                failures.append(
+                    f"Repro mismatch vs MVP: {col} model={row['model']} combo={row['combo']} "
+                    f"L{row['level']} fresh={row[f'{col}_fresh']:.6f} ref={row[f'{col}_ref']:.6f}"
+                )
+        details.append(f"Compared {len(merged)} rows against MVP CSV")
+    else:
+        # Run twice in separate temp dirs, compare
+        compare_source = "two_fresh_runs"
+        with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
+            df1 = _run_to_df(Path(td1))
+            df2 = _run_to_df(Path(td2))
+
+        df1s = df1.sort_values(KEY_COLS).reset_index(drop=True)
+        df2s = df2.sort_values(KEY_COLS).reset_index(drop=True)
+
+        for col in ["macro_f1", "accuracy", "status"]:
+            if col == "status":
+                mismatch_mask = df1s[col] != df2s[col]
+            else:
+                mismatch_mask = (df1s[col] - df2s[col]).abs() > 1e-9
+            for i in mismatch_mask[mismatch_mask].index:
+                row = df1s.iloc[i]
+                failures.append(
+                    f"Repro mismatch run1 vs run2: {col} model={row['model']} "
+                    f"combo={row['combo']} L{row['level']}: "
+                    f"{df1s.at[i, col]!r} vs {df2s.at[i, col]!r}"
+                )
+        details.append(f"Compared two fresh runs ({len(df1s)} rows each)")
+
+    passed = len(failures) == 0
+    return {
+        "check": 5,
+        "name": "reproducibility",
+        "passed": passed,
+        "compare_source": compare_source,
+        "failures": failures,
+        "details": details,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Check 6: Performance trend and breaking points
+# ---------------------------------------------------------------------------
+
+def check_performance_trend(mvp_csv_path):
+    """Check 6: from MVP results, mean F1 at level 5 < level 0 for each single noise;
+    at least one (model, noise) pair has a breaking point."""
+    import pandas as pd
+
+    failures = []
+    details = []
+
+    if not Path(mvp_csv_path).exists():
+        return {
+            "check": 6,
+            "name": "performance_trend",
+            "passed": False,
+            "failures": [f"MVP CSV not found: {mvp_csv_path}"],
+            "details": [],
+        }
+
+    df = pd.read_csv(mvp_csv_path)
+    df_ok = df[df["status"] == "ok"]
+
+    # Baselines: mean F1 of clean rows per model
+    clean_rows = df_ok[df_ok["combo"] == "clean"]
+    baselines = clean_rows.groupby("model")["macro_f1"].mean()
+
+    single_noises = ["label", "gaussian", "outliers", "missing"]
+    n_breaking = 0
+    trend_rows = []
+
+    for noise in single_noises:
+        noise_df = df_ok[df_ok["combo"] == noise]
+        if noise_df.empty:
+            details.append(f"{noise}: no rows found")
+            continue
+
+        # Mean F1 across all models at each level
+        level_mean = noise_df.groupby("level")["macro_f1"].mean()
+        f1_at_0 = float(baselines.mean())  # level 0 = clean baseline mean across models
+        f1_at_5 = float(level_mean.get(5, float("nan")))
+
+        trend_ok = f1_at_5 < f1_at_0
+        trend_rows.append({
+            "noise": noise,
+            "mean_f1_level0": round(f1_at_0, 4),
+            "mean_f1_level5": round(f1_at_5, 4),
+            "trend_down": trend_ok,
+        })
+        if not trend_ok:
+            failures.append(
+                f"{noise}: mean F1 at level 5 ({f1_at_5:.4f}) is NOT below level 0 ({f1_at_0:.4f})"
+            )
+        details.append(f"{noise}: L0={f1_at_0:.4f} L5={f1_at_5:.4f} trend_down={trend_ok}")
+
+        # Count breaking points per model
+        for model, b_f1 in baselines.items():
+            threshold = 0.90 * b_f1
+            model_df = noise_df[noise_df["model"] == model]
+            for level in [1, 2, 3, 4, 5]:
+                ldf = model_df[model_df["level"] == level]
+                if ldf.empty:
+                    continue
+                mean_f1_l = float(ldf["macro_f1"].mean())
+                if mean_f1_l <= threshold + 1e-12:
+                    n_breaking += 1
+                    break
+
+    if n_breaking == 0:
+        failures.append(
+            "No (model, noise) pair reaches its breaking point by level 5 "
+            "(at least 1 required)"
+        )
+
+    details.append(f"Breaking-point pairs found: {n_breaking} / 16")
+    passed = len(failures) == 0
+    return {
+        "check": 6,
+        "name": "performance_trend",
+        "passed": passed,
+        "n_breaking_pairs": n_breaking,
+        "trend_by_noise": trend_rows,
+        "failures": failures,
+        "details": details,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Check 7: Runtime measurement and full-run estimate
+# ---------------------------------------------------------------------------
+
+def check_runtime(mvp_csv_path=None, probe_dataset="digits"):
+    """Check 7: report MVP runtime and estimate full-run time.
+
+    - If MVP results exist, reads fit_time_s from the CSV.
+    - Runs a small timing probe (Digits, seed 0, label noise, levels 0 and 1)
+      in a temp dir to get per-fit timing for Digits.
+    - Estimates full-run time from mean fit time.
+    """
+    import tempfile
+    import time as time_mod
+    import pandas as pd
+    from app.engine.runner import build_plan, execute_plan
+    from app.core.hashing import compute_config_hash
+    from app.core.levels import load_levels
+
+    details = []
+    failures = []
+    mvp_runtime_s = None
+    mean_fit_per_model = {}
+
+    if mvp_csv_path is not None and Path(mvp_csv_path).exists():
+        df = pd.read_csv(mvp_csv_path)
+        df_ok = df[df["status"] == "ok"]
+        mvp_runtime_s = float(df_ok["fit_time_s"].sum())
+        mean_fit_per_model = (
+            df_ok.groupby("model")["fit_time_s"].mean().round(4).to_dict()
+        )
+        details.append(f"MVP total fit_time_s sum: {mvp_runtime_s:.2f}s")
+        details.append(f"Mean fit_time_s per model: {mean_fit_per_model}")
+    else:
+        details.append("MVP CSV not available — skipping MVP runtime summary")
+
+    # Small timing probe with Digits dataset
+    lvl = load_levels()
+    probe_request = {
+        "dataset": probe_dataset,
+        "models": ["logreg", "random_forest"],
+        "noises": ["label"],
+        "mode": "sweep",
+        "seed_count": 1,
+    }
+    probe_meta = {
+        "run_id": "timing-probe",
+        "run_type": "custom",
+        "stage": "custom",
+        "config_hash": compute_config_hash(),
+        "methodology_version": "1.0",
+        "levels_version": lvl.get("levels_version", ""),
+        "levels_frozen": lvl.get("frozen", False),
+        "requested_config": probe_request,
+    }
+    probe_plan = build_plan(custom_request=probe_request)
+
+    with tempfile.TemporaryDirectory() as td:
+        t0 = time_mod.time()
+        execute_plan(probe_plan, Path(td), probe_meta)
+        probe_elapsed = time_mod.time() - t0
+        probe_df = pd.read_csv(Path(td) / "raw_results.csv")
+
+    probe_fits = len(probe_df)
+    mean_probe_fit_s = probe_elapsed / probe_fits if probe_fits else 0.0
+    FULL_RUN_FITS = 6080
+    full_run_estimate_s = mean_probe_fit_s * FULL_RUN_FITS
+    full_run_estimate_min = full_run_estimate_s / 60.0
+
+    details.append(
+        f"Timing probe: {probe_fits} fits in {probe_elapsed:.2f}s "
+        f"(mean {mean_probe_fit_s:.3f}s/fit on {probe_dataset})"
+    )
+    details.append(
+        f"Full-run estimate: {FULL_RUN_FITS} fits × {mean_probe_fit_s:.3f}s = "
+        f"{full_run_estimate_s:.0f}s (~{full_run_estimate_min:.1f} min)"
+    )
+
+    passed = len(failures) == 0
+    return {
+        "check": 7,
+        "name": "runtime",
+        "passed": passed,
+        "mvp_total_fit_time_s": mvp_runtime_s,
+        "mean_fit_per_model_s": mean_fit_per_model,
+        "probe_fits": probe_fits,
+        "probe_elapsed_s": round(probe_elapsed, 3),
+        "mean_probe_fit_s": round(mean_probe_fit_s, 4),
+        "full_run_estimate_s": round(full_run_estimate_s, 1),
+        "full_run_estimate_min": round(full_run_estimate_min, 2),
+        "failures": failures,
+        "details": details,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
 
-def run_checks_1_4(stage: str, out_dir: Path) -> dict:
-    """Run checks 1-4 and write partial validation report."""
+def run_all_checks(stage: str, out_dir: Path) -> dict:
+    """Run all 7 checks and write the full validation report."""
     mvp_csv = Path("results/official/mvp/raw_results.csv")
 
     print("Running check 1: level-0 equals clean...")
@@ -416,10 +719,23 @@ def run_checks_1_4(stage: str, out_dir: Path) -> dict:
     c4 = check_noise_rates()
     print(f"  Check 4: {'PASS' if c4['passed'] else 'FAIL'}")
 
+    print("Running check 5: reproducibility...")
+    c5 = check_reproducibility(mvp_csv_path=mvp_csv if mvp_csv.exists() else None)
+    print(f"  Check 5: {'PASS' if c5['passed'] else 'FAIL'}")
+
+    print("Running check 6: performance trend...")
+    c6 = check_performance_trend(mvp_csv_path=mvp_csv)
+    print(f"  Check 6: {'PASS' if c6['passed'] else 'FAIL'}")
+
+    print("Running check 7: runtime...")
+    c7 = check_runtime(mvp_csv_path=mvp_csv if mvp_csv.exists() else None)
+    print(f"  Check 7: {'PASS' if c7['passed'] else 'FAIL'}")
+
+    all_checks = [c1, c2, c3, c4, c5, c6, c7]
     report = {
         "stage": stage,
-        "checks_1_4": [c1, c2, c3, c4],
-        "all_passed": all(c["passed"] for c in [c1, c2, c3, c4]),
+        "checks": all_checks,
+        "all_passed": all(c["passed"] for c in all_checks),
     }
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -446,10 +762,10 @@ def main():
         else:
             out_dir = Path("results/official") / args.stage
 
-        report = run_checks_1_4(args.stage, out_dir)
+        report = run_all_checks(args.stage, out_dir)
 
         print("\nSummary:")
-        for c in report["checks_1_4"]:
+        for c in report["checks"]:
             status = "PASS" if c["passed"] else "FAIL"
             print(f"  Check {c['check']} ({c['name']}): {status}")
 

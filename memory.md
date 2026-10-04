@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 2.2 (Validation checks 1 to 4)
-- Next task: Task 2.3 (Validation checks 5 to 7)
+- Last completed task: Task 2.3 (Validation checks 5 to 7)
+- Next task: Task 2.4 (Execute MVP)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -106,3 +106,4 @@
 | 2026-10-04 | Phase 2 | Implemented validate.py checks 1-4 and tests; 8/8 tests passing (178 total) | Task 2.2 |
 | 2026-10-04 | Phase 2 | Task 2.2 corrective fix: closed 5 gaps in validate.py (Check 1 MVP metrics, Check 2 real FAIL test, Check 3 clean-diff/inf/FAIL test, Check 4 structured details); 12 tests, 182 total | Task 2.2 fix |
 | 2026-10-04 | Phase 2 | Task 2.2 Check 1 semantic fix: Part B now correctly looks only for combo="clean" raw rows (no non-clean level-0 rows exist); 3 new FAIL tests (missing, nonfinite, duplicate); 14 tests, 184 total | Task 2.2 fix2 |
+| 2026-10-05 | Phase 2 | Implemented validate.py checks 5-7 (reproducibility, performance trend, runtime) and tests (8/8); 192 total passing | Task 2.3 |
