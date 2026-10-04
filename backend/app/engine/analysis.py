@@ -95,3 +95,114 @@ def compute_summary(df: pd.DataFrame, baselines: pd.DataFrame) -> Tuple[pd.DataF
         summary["drop_rel"] = np.nan
     
     return summary, n_errors
+
+
+import json
+from app.core.levels import get_params
+from app.core.config import NOISE_LABEL, NOISE_GAUSSIAN, NOISE_OUTLIERS, NOISE_MISSING
+
+_NOISE_PARAM_MAP = {
+    NOISE_LABEL: "label_flip_rate",
+    NOISE_GAUSSIAN: "gaussian_k",
+    NOISE_OUTLIERS: "outlier_cell_rate",
+    NOISE_MISSING: "missing_cell_rate"
+}
+
+def _get_noise_params_json(combo: str, level: int) -> str:
+    if not combo or combo == "clean" or level == 0:
+        return "{}"
+    all_params = get_params(level)
+    components = combo.split("+")
+    combo_params = {}
+    for comp in components:
+        if comp in _NOISE_PARAM_MAP:
+            param_key = _NOISE_PARAM_MAP[comp]
+            combo_params[param_key] = all_params.get(param_key)
+    return json.dumps(combo_params)
+
+
+def compute_breaking_points(df: pd.DataFrame, summary: pd.DataFrame, baselines: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute breaking points per (dataset, model, combo).
+    Returns DataFrame with breaking point information.
+    """
+    df_ok = df[df["status"] == "ok"].copy()
+    
+    results = []
+    
+    if summary.empty or baselines.empty:
+        return pd.DataFrame(columns=[
+            "dataset", "model", "combo", "baseline_f1", "threshold_f1",
+            "breaking_level", "reached", "noise_params", "f1_at_bp", "seeds_below_at_bp"
+        ])
+        
+    unique_combos = summary[summary["combo"] != "clean"][["dataset", "model", "combo"]].drop_duplicates()
+    
+    for _, row in unique_combos.iterrows():
+        dataset = row["dataset"]
+        model = row["model"]
+        combo = row["combo"]
+        
+        b_df = baselines[(baselines["dataset"] == dataset) & (baselines["model"] == model)]
+        if b_df.empty:
+            continue
+            
+        baseline_f1 = float(b_df.iloc[0]["f1_mean"])
+        threshold_f1 = float(b_df.iloc[0]["threshold_f1"])
+        
+        s_df = summary[
+            (summary["dataset"] == dataset) &
+            (summary["model"] == model) &
+            (summary["combo"] == combo) &
+            (summary["level"] > 0)
+        ].sort_values("level")
+        
+        breaking_level = None
+        f1_at_bp = None
+        
+        for _, s_row in s_df.iterrows():
+            lvl = int(s_row["level"])
+            f1 = float(s_row["f1_mean"])
+            if f1 <= threshold_f1 + 1e-12:
+                breaking_level = lvl
+                f1_at_bp = f1
+                break
+                
+        if breaking_level is not None:
+            reached = True
+            noise_params = _get_noise_params_json(combo, breaking_level)
+            
+            raw_seeds = df_ok[
+                (df_ok["dataset"] == dataset) &
+                (df_ok["model"] == model) &
+                (df_ok["combo"] == combo) &
+                (df_ok["level"] == breaking_level)
+            ]
+            seeds_below_at_bp = int((raw_seeds["macro_f1"] <= threshold_f1 + 1e-12).sum())
+        else:
+            reached = False
+            noise_params = ""
+            f1_at_bp = pd.NA
+            seeds_below_at_bp = pd.NA
+            breaking_level = pd.NA
+            
+        results.append({
+            "dataset": dataset,
+            "model": model,
+            "combo": combo,
+            "baseline_f1": baseline_f1,
+            "threshold_f1": threshold_f1,
+            "breaking_level": breaking_level,
+            "reached": reached,
+            "noise_params": noise_params,
+            "f1_at_bp": f1_at_bp,
+            "seeds_below_at_bp": seeds_below_at_bp,
+        })
+        
+    if not results:
+        return pd.DataFrame(columns=[
+            "dataset", "model", "combo", "baseline_f1", "threshold_f1",
+            "breaking_level", "reached", "noise_params", "f1_at_bp", "seeds_below_at_bp"
+        ])
+        
+    return pd.DataFrame(results)
