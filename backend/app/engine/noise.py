@@ -27,6 +27,7 @@ __all__ = [
     "inject_label",
     "inject_gaussian",
     "inject_outliers",
+    "inject_missing",
 ]
 
 
@@ -281,3 +282,45 @@ def inject_outliers(
     X_noisy[row_indices, col_indices] = outlier_values
 
     return X_noisy, n_cells
+
+
+def inject_missing(
+    X: np.ndarray,
+    p: float,
+    rng: np.random.Generator,
+) -> Tuple[np.ndarray, int]:
+    """Inject missing values (NaN) into feature matrix.
+
+    Formula: mask = rng.random(X.shape) < p; X[mask] = NaN on a copy.
+    Applies to all columns.
+    p = 0 returns an identical copy and no NaN.
+    Never modifies input array in place.
+
+    Args:
+        X: 2D feature matrix of shape (n_samples, n_features).
+        p: Missingness probability in [0.0, 1.0].
+        rng: NumPy Generator instance.
+
+    Returns:
+        Tuple of (X_noisy, n_cells).
+        X_noisy is a copy of X with masked cells set to NaN.
+        n_cells is the integer count of NaN cells injected.
+    """
+    if p < 0.0 or p > 1.0:
+        raise ValueError(f"p must be in [0.0, 1.0], got {p}")
+
+    X_arr = np.asarray(X, dtype=np.float64)
+    if X_arr.ndim != 2:
+        raise ValueError(f"X must be a 2D array, got shape {X_arr.shape}")
+
+    if p == 0.0:
+        return X_arr.copy(), 0
+
+    mask = rng.random(X_arr.shape) < p
+    n_cells = int(np.sum(mask))
+
+    X_noisy = X_arr.copy()
+    X_noisy[mask] = np.nan
+
+    return X_noisy, n_cells
+
