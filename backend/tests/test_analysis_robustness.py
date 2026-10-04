@@ -97,5 +97,18 @@ def test_write_all_outputs(monkeypatch, tmp_path):
     assert (out_dir / "synergy.csv").exists()
     assert (out_dir / "robustness.csv").exists()
     
-    # Check that CSVs are readable
-    pd.read_csv(out_dir / "robustness.csv")
+    # Check explicit columns and order
+    baselines_df = pd.read_csv(out_dir / "baselines.csv")
+    assert list(baselines_df.columns) == ["dataset", "model", "f1_mean", "f1_std", "acc_mean", "acc_std", "threshold_f1"]
+
+    summary_df = pd.read_csv(out_dir / "summary.csv")
+    assert list(summary_df.columns) == ["dataset", "model", "combo", "level", "n_seeds", "f1_mean", "f1_std", "acc_mean", "acc_std", "fit_time_mean", "rel_f1", "drop_abs", "drop_rel"]
+
+    breaking_df = pd.read_csv(out_dir / "breaking_points.csv")
+    assert list(breaking_df.columns) == ["dataset", "model", "combo", "baseline_f1", "threshold_f1", "breaking_level", "reached", "noise_params", "f1_at_bp", "seeds_below_at_bp"]
+
+    synergy_df = pd.read_csv(out_dir / "synergy.csv")
+    assert list(synergy_df.columns) == ["dataset", "model", "combo", "level", "baseline_f1", "compound_f1", "drop_compound", "sum_single_drops", "synergy", "f1_floor_flag"]
+
+    robustness_df = pd.read_csv(out_dir / "robustness.csv")
+    assert list(robustness_df.columns) == ["dataset", "model", "scope", "BPI", "RS", "rank"]
