@@ -119,6 +119,29 @@ class TestInjectOutliers:
                 f"Value {val} at {row},{col} is not mean +/- 5*std"
             )
 
+    def test_both_signs_are_generated(self):
+        """Verify that both positive and negative outlier shifts occur."""
+        X = np.zeros((1000, 1))
+        mean_clean = np.array([0.0])
+        std_clean = np.array([1.0])
+        rng = make_rng(seed=42, noise="outliers", level=3)
+        sigma = 5
+
+        # 1000 eligible cells. rate=0.2 means 200 cells replaced.
+        # With 200 uniform sign draws, the chance of all being + or all being - is 2^(-199), effectively 0.
+        X_noisy, n_cells = inject_outliers(X, rate=0.20, mean_clean=mean_clean, std_clean=std_clean, rng=rng, sigma=sigma)
+        
+        assert n_cells == 200
+        diff_mask = X_noisy != X
+        replaced_values = X_noisy[diff_mask]
+
+        has_plus = np.any(np.isclose(replaced_values, sigma * std_clean[0]))
+        has_minus = np.any(np.isclose(replaced_values, -sigma * std_clean[0]))
+        
+        assert has_plus, "Expected at least one positive outlier sign (+5*std)"
+        assert has_minus, "Expected at least one negative outlier sign (-5*std)"
+
+
     def test_deterministic_same_seed_and_level(self):
         X = np.random.default_rng(123).normal(size=(50, 4))
         mean_clean, std_clean = clean_stats(X)
