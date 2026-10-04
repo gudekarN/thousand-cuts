@@ -1,0 +1,411 @@
+{
+  "stage": "mvp",
+  "checks": [
+    {
+      "check": 1,
+      "name": "level0_equals_clean",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "Part A: all 15 combos return identical data at level 0",
+        "Part B: verified 12 clean row(s) from MVP CSV"
+      ],
+      "mvp_metrics": [
+        {
+          "dataset": "breast_cancer",
+          "model": "logreg",
+          "seed": 0,
+          "macro_f1": 0.9564362921716344,
+          "accuracy": 0.95906432748538,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "svm_rbf",
+          "seed": 0,
+          "macro_f1": 0.9500584112149532,
+          "accuracy": 0.953216374269006,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "decision_tree",
+          "seed": 0,
+          "macro_f1": 0.9012987012987012,
+          "accuracy": 0.9064327485380116,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "random_forest",
+          "seed": 0,
+          "macro_f1": 0.9497354497354498,
+          "accuracy": 0.953216374269006,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "logreg",
+          "seed": 1,
+          "macro_f1": 0.9558709677419356,
+          "accuracy": 0.95906432748538,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "svm_rbf",
+          "seed": 1,
+          "macro_f1": 0.97469665581533,
+          "accuracy": 0.9766081871345028,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "decision_tree",
+          "seed": 1,
+          "macro_f1": 0.93154274484114,
+          "accuracy": 0.935672514619883,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "random_forest",
+          "seed": 1,
+          "macro_f1": 0.9497354497354498,
+          "accuracy": 0.953216374269006,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "logreg",
+          "seed": 2,
+          "macro_f1": 0.962044983722995,
+          "accuracy": 0.9649122807017544,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "svm_rbf",
+          "seed": 2,
+          "macro_f1": 0.962044983722995,
+          "accuracy": 0.9649122807017544,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "decision_tree",
+          "seed": 2,
+          "macro_f1": 0.9301703975943868,
+          "accuracy": 0.935672514619883,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        },
+        {
+          "dataset": "breast_cancer",
+          "model": "random_forest",
+          "seed": 2,
+          "macro_f1": 0.9617734724292102,
+          "accuracy": 0.9649122807017544,
+          "f1_finite": true,
+          "acc_finite": true,
+          "f1_nonneg": true,
+          "acc_nonneg": true
+        }
+      ]
+    },
+    {
+      "check": 2,
+      "name": "test_set_unchanged",
+      "passed": true,
+      "failures": [],
+      "details": "Test set hashes unchanged across all fits"
+    },
+    {
+      "check": 3,
+      "name": "pipeline_stats_from_noisy_train",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "seed=0 combo=gaussian L1: imputer OK, scaler OK, stats-differ OK",
+        "seed=0 combo=gaussian L3: imputer OK, scaler OK, stats-differ OK",
+        "seed=0 combo=label+gaussian L1: imputer OK, scaler OK, stats-differ OK",
+        "seed=0 combo=label+gaussian L3: imputer OK, scaler OK, stats-differ OK"
+      ]
+    },
+    {
+      "check": 4,
+      "name": "noise_rates",
+      "passed": true,
+      "failures": [],
+      "rate_details": [
+        {
+          "level": 1,
+          "noise": "label",
+          "expected": 20,
+          "actual": 20,
+          "tolerance": "exact",
+          "pass": true
+        },
+        {
+          "level": 1,
+          "noise": "missing",
+          "expected": 0.1,
+          "actual": 0.1,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 1,
+          "noise": "outlier",
+          "expected": 0.02,
+          "actual": 0.02,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 1,
+          "noise": "gaussian",
+          "expected": 0.25,
+          "actual_mean_ratio": 0.9819,
+          "tolerance": 0.1,
+          "pass": true
+        },
+        {
+          "level": 2,
+          "noise": "label",
+          "expected": 40,
+          "actual": 40,
+          "tolerance": "exact",
+          "pass": true
+        },
+        {
+          "level": 2,
+          "noise": "missing",
+          "expected": 0.2,
+          "actual": 0.2034,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 2,
+          "noise": "outlier",
+          "expected": 0.05,
+          "actual": 0.05,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 2,
+          "noise": "gaussian",
+          "expected": 0.5,
+          "actual_mean_ratio": 1.0031,
+          "tolerance": 0.1,
+          "pass": true
+        },
+        {
+          "level": 3,
+          "noise": "label",
+          "expected": 80,
+          "actual": 80,
+          "tolerance": "exact",
+          "pass": true
+        },
+        {
+          "level": 3,
+          "noise": "missing",
+          "expected": 0.3,
+          "actual": 0.3021,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 3,
+          "noise": "outlier",
+          "expected": 0.1,
+          "actual": 0.1,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 3,
+          "noise": "gaussian",
+          "expected": 1.0,
+          "actual_mean_ratio": 1.008,
+          "tolerance": 0.1,
+          "pass": true
+        },
+        {
+          "level": 4,
+          "noise": "label",
+          "expected": 119,
+          "actual": 119,
+          "tolerance": "exact",
+          "pass": true
+        },
+        {
+          "level": 4,
+          "noise": "missing",
+          "expected": 0.4,
+          "actual": 0.4003,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 4,
+          "noise": "outlier",
+          "expected": 0.15,
+          "actual": 0.15,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 4,
+          "noise": "gaussian",
+          "expected": 1.5,
+          "actual_mean_ratio": 1.005,
+          "tolerance": 0.1,
+          "pass": true
+        },
+        {
+          "level": 5,
+          "noise": "label",
+          "expected": 159,
+          "actual": 159,
+          "tolerance": "exact",
+          "pass": true
+        },
+        {
+          "level": 5,
+          "noise": "missing",
+          "expected": 0.5,
+          "actual": 0.4984,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 5,
+          "noise": "outlier",
+          "expected": 0.2,
+          "actual": 0.2,
+          "tolerance": 0.02,
+          "pass": true
+        },
+        {
+          "level": 5,
+          "noise": "gaussian",
+          "expected": 2.0,
+          "actual_mean_ratio": 1.0096,
+          "tolerance": 0.1,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "check": 5,
+      "name": "reproducibility",
+      "passed": true,
+      "compare_source": "mvp_csv",
+      "failures": [],
+      "details": [
+        "Compared 20 subset rows (clean L0 + noisy L3/L5) against MVP CSV"
+      ]
+    },
+    {
+      "check": 6,
+      "name": "performance_trend",
+      "passed": true,
+      "n_breaking_pairs": 6,
+      "trend_by_noise": [
+        {
+          "noise": "label",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.721,
+          "trend_down": true
+        },
+        {
+          "noise": "gaussian",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.8659,
+          "trend_down": true
+        },
+        {
+          "noise": "outliers",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.9302,
+          "trend_down": true
+        },
+        {
+          "noise": "missing",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.9252,
+          "trend_down": true
+        }
+      ],
+      "failures": [],
+      "details": [
+        "label: L0=0.9488 L5=0.7210 trend_down=True",
+        "gaussian: L0=0.9488 L5=0.8659 trend_down=True",
+        "outliers: L0=0.9488 L5=0.9302 trend_down=True",
+        "missing: L0=0.9488 L5=0.9252 trend_down=True",
+        "Breaking-point pairs found: 6 / 16"
+      ]
+    },
+    {
+      "check": 7,
+      "name": "runtime",
+      "passed": true,
+      "mvp_total_fit_time_s": 19.86053729057311,
+      "mean_fit_per_model_s": {
+        "decision_tree": 0.0122,
+        "logreg": 0.0117,
+        "random_forest": 0.2236,
+        "svm_rbf": 0.007
+      },
+      "probe_fits": 12,
+      "probe_elapsed_s": 3.163,
+      "mean_probe_fit_s": 0.2636,
+      "full_run_estimate_s": 1602.4,
+      "full_run_estimate_min": 26.71,
+      "failures": [],
+      "details": [
+        "MVP total fit_time_s sum: 19.86s",
+        "Mean fit_time_s per model: {'decision_tree': 0.0122, 'logreg': 0.0117, 'random_forest': 0.2236, 'svm_rbf': 0.007}",
+        "Timing probe: 12 fits in 3.16s (mean 0.264s/fit on digits)",
+        "Full-run estimate: 6080 fits \u00d7 0.264s = 1602s (~26.7 min)"
+      ]
+    }
+  ],
+  "all_passed": true
+}

@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 2.4 (Execute MVP)
-- Next task: Task 2.5 (MVP validation report)
+- Last completed task: Task 2.5 (MVP validation report)
+- Next task: Task 3.1 (Calibrate command)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -109,3 +109,4 @@
 | 2026-10-05 | Phase 2 | Implemented validate.py checks 5-7 (reproducibility, performance trend, runtime) and tests (8/8); 192 total passing | Task 2.3 |
 | 2026-10-05 | Phase 2 | Task 2.3 correction: Check 5 now filters exact fixed subset (clean L0 + noisy L3/L5 only, seed 0, 4 models, label/label+gaussian), uses strict == equality; Check 7 adds probe_fits==0 failure condition; 10 tests, 194 total | Task 2.3 fix |
 | 2026-10-05 | Phase 2 | Executed MVP run (312 fits, 312 ok, 0 errors, 22.2s runtime); generated raw_results.csv, manifest.json, and all derived analysis CSVs | Task 2.5 |
+| 2026-10-05 | Phase 2 | MVP validation report: all 7 checks PASS. Fixed numpy bool_ JSON serialization bug in json_store.py; fixed CWD-relative path bug in validate.py (now uses official_dir). 194 tests passing | Task 3.1 |

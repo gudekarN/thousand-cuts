@@ -26,9 +26,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.engine.data import split
 from app.engine.noise import apply_noise, list_all_combos, clean_stats
 from app.engine.pipelines import build_pipeline
-from app.core.config import DATASET_BREAST_CANCER, NOISE_LABEL, NOISE_GAUSSIAN, NOISE_OUTLIERS, NOISE_MISSING
+from app.core.config import DATASET_BREAST_CANCER, NOISE_LABEL, NOISE_GAUSSIAN, NOISE_OUTLIERS, NOISE_MISSING, STAGE_MVP
 from app.core.levels import get_params, load_levels
 from app.storage.json_store import write_json_atomic
+from app.storage.paths import official_dir
 
 
 CHECKS_1_4 = [1, 2, 3, 4]
@@ -738,7 +739,7 @@ def check_runtime(mvp_csv_path=None, probe_dataset="digits"):
 
 def run_all_checks(stage: str, out_dir: Path) -> dict:
     """Run all 7 checks and write the full validation report."""
-    mvp_csv = Path("results/official/mvp/raw_results.csv")
+    mvp_csv = official_dir(STAGE_MVP) / "raw_results.csv"
 
     print("Running check 1: level-0 equals clean...")
     c1 = check_level0_equals_clean(mvp_csv_path=mvp_csv if mvp_csv.exists() else None)
@@ -797,7 +798,7 @@ def main():
         if args.out:
             out_dir = Path(args.out)
         else:
-            out_dir = Path("results/official") / args.stage
+            out_dir = official_dir(args.stage)
 
         report = run_all_checks(args.stage, out_dir)
 

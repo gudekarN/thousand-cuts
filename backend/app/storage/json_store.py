@@ -10,6 +10,25 @@ import tempfile
 from typing import Any, Union
 
 
+class _NumpyEncoder(json.JSONEncoder):
+    """JSON encoder that converts numpy scalar types to native Python types."""
+
+    def default(self, obj: Any) -> Any:  # noqa: ANN001
+        try:
+            import numpy as np  # lazy import – numpy is a project dep
+            if isinstance(obj, np.bool_):
+                return bool(obj)
+            if isinstance(obj, (np.integer,)):
+                return int(obj)
+            if isinstance(obj, (np.floating,)):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+        except ImportError:
+            pass
+        return super().default(obj)
+
+
 def write_json_atomic(path: Union[str, Path], data: Any, indent: int = 2) -> None:
     """Atomically write data as JSON to the specified path.
 
@@ -38,7 +57,7 @@ def write_json_atomic(path: Union[str, Path], data: Any, indent: int = 2) -> Non
     tmp_path = Path(tmp_file.name)
 
     try:
-        json.dump(data, tmp_file, indent=indent)
+        json.dump(data, tmp_file, indent=indent, cls=_NumpyEncoder)
         tmp_file.flush()
         # Must close the handle before os.replace, especially on Windows
         tmp_file.close()
