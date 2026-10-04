@@ -4,11 +4,11 @@
 
 ## 1. Current state
 - Date created: 2026-10-04
-- Current phase: **Phase 0**
+- Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 0.2 (Methodology constants and structure check)
-- Next task: Gate 0 approval / Phase 1, Task 1.1
+- Last completed task: Task 1.1 (Dataset loading and stratified split)
+- Next task: Task 1.2 (Levels loader and config hash)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -81,3 +81,4 @@
 | 2026-10-04 | Planning | Fixed final 2 stale Architecture refs in rules.md: R-M2 (models) 4.2→4.4; API error shape section 7→8. All seven docs now consistent. No methodology changes. | Phase 0, Task 0.1 |
 | 2026-10-04 | Phase 0 | Created Python 3.11 venv and installed pinned dependencies | Task 0.2 |
 | 2026-10-04 | Phase 0 | Created methodology constants (config.py, no logic, no sklearn imports) and structure tests (test_config.py, test_structure.py); 14 tests passing | Gate 0 / Task 1.1 |
+| 2026-10-04 | Phase 1 | Implemented dataset loading and stratified splits (data.py); 6 tests passing | Task 1.2 |
