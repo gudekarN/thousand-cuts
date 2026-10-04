@@ -107,3 +107,4 @@
 | 2026-10-04 | Phase 2 | Task 2.2 corrective fix: closed 5 gaps in validate.py (Check 1 MVP metrics, Check 2 real FAIL test, Check 3 clean-diff/inf/FAIL test, Check 4 structured details); 12 tests, 182 total | Task 2.2 fix |
 | 2026-10-04 | Phase 2 | Task 2.2 Check 1 semantic fix: Part B now correctly looks only for combo="clean" raw rows (no non-clean level-0 rows exist); 3 new FAIL tests (missing, nonfinite, duplicate); 14 tests, 184 total | Task 2.2 fix2 |
 | 2026-10-05 | Phase 2 | Implemented validate.py checks 5-7 (reproducibility, performance trend, runtime) and tests (8/8); 192 total passing | Task 2.3 |
+| 2026-10-05 | Phase 2 | Task 2.3 correction: Check 5 now filters exact fixed subset (clean L0 + noisy L3/L5 only, seed 0, 4 models, label/label+gaussian), uses strict == equality; Check 7 adds probe_fits==0 failure condition; 10 tests, 194 total | Task 2.3 fix |

@@ -25,15 +25,54 @@ from scripts.validate import (
 # ─── Check 5: Reproducibility ─────────────────────────────────────────────────
 
 def test_check5_two_fresh_runs_identical():
-    """Check 5 PASS: two fresh runs of the same plan give identical metrics."""
+    """Check 5 PASS: two fresh runs of the exact fixed subset give identical metrics."""
     result = check_reproducibility(mvp_csv_path=None)
     assert result["passed"], result["failures"]
     assert result["compare_source"] == "two_fresh_runs"
-    assert "Compared two fresh runs" in result["details"][0]
+    # Confirm the detail message mentions the correct subset contents
+    assert "clean L0" in result["details"][0]
+    assert "noisy L3/L5" in result["details"][0]
+
+
+def test_check5_subset_filters_correctly():
+    """Check 5 PASS: _filter_repro_subset retains exactly clean L0 + noisy L3/L5 rows."""
+    from scripts.validate import _filter_repro_subset
+    import pandas as pd
+
+    rows = [
+        # Should be kept: clean level 0, seed 0, 4 models
+        {"dataset": "breast_cancer", "model": "logreg", "seed": 0,
+         "combo": "clean", "level": 0, "status": "ok", "macro_f1": 0.95, "accuracy": 0.96},
+        # Should be kept: label level 3
+        {"dataset": "breast_cancer", "model": "logreg", "seed": 0,
+         "combo": "label", "level": 3, "status": "ok", "macro_f1": 0.85, "accuracy": 0.86},
+        # Should be kept: label+gaussian level 5
+        {"dataset": "breast_cancer", "model": "logreg", "seed": 0,
+         "combo": "label+gaussian", "level": 5, "status": "ok", "macro_f1": 0.75, "accuracy": 0.76},
+        # Should be EXCLUDED: label level 1 (not in subset)
+        {"dataset": "breast_cancer", "model": "logreg", "seed": 0,
+         "combo": "label", "level": 1, "status": "ok", "macro_f1": 0.90, "accuracy": 0.91},
+        # Should be EXCLUDED: different seed
+        {"dataset": "breast_cancer", "model": "logreg", "seed": 1,
+         "combo": "label", "level": 3, "status": "ok", "macro_f1": 0.82, "accuracy": 0.83},
+        # Should be EXCLUDED: non-clean level 0 (does not exist in real data, but filtered out if present)
+        {"dataset": "breast_cancer", "model": "logreg", "seed": 0,
+         "combo": "label", "level": 0, "status": "ok", "macro_f1": 0.95, "accuracy": 0.96},
+    ]
+    df = pd.DataFrame(rows)
+    filtered = _filter_repro_subset(df)
+
+    assert len(filtered) == 3
+    combos_kept = set(filtered["combo"].tolist())
+    assert combos_kept == {"clean", "label", "label+gaussian"}
+    levels_kept = set(filtered["level"].tolist())
+    assert levels_kept == {0, 3, 5}
+    # No non-clean level-0 rows
+    assert not any((filtered["combo"] != "clean") & (filtered["level"] == 0))
 
 
 def test_check5_fails_when_metrics_differ(monkeypatch):
-    """Check 5 FAIL: inject non-determinism by corrupting the CSV on the second execute call."""
+    """Check 5 FAIL: even a tiny metric difference (strict ==) causes FAIL."""
     import app.engine.runner as runner_mod
 
     original_execute = runner_mod.execute_plan
@@ -42,17 +81,21 @@ def test_check5_fails_when_metrics_differ(monkeypatch):
     def noisy_execute(plan, out_dir, run_meta, **kwargs):
         original_execute(plan, out_dir, run_meta, **kwargs)
         call_count[0] += 1
-        # On the second call, corrupt the CSV to simulate non-determinism
+        # On the second call corrupt macro_f1 by the smallest representable float delta
         if call_count[0] == 2:
             csv = out_dir / "raw_results.csv"
             df = pd.read_csv(csv)
-            df["macro_f1"] = df["macro_f1"] + 0.05  # deterministic but wrong
+            # Add a tiny but non-zero delta that is detectable by strict ==
+            import math
+            df["macro_f1"] = df["macro_f1"].apply(
+                lambda x: x + math.ulp(x)  # one ULP: smallest change for ==
+            )
             df.to_csv(csv, index=False)
 
     monkeypatch.setattr(runner_mod, "execute_plan", noisy_execute)
 
     result = check_reproducibility(mvp_csv_path=None)
-    assert not result["passed"], "Should FAIL when runs produce different metrics"
+    assert not result["passed"], "Should FAIL when even a tiny metric difference exists"
     assert len(result["failures"]) > 0
 
 
@@ -221,3 +264,25 @@ def test_check7_passes_with_synthetic_mvp(tmp_path):
     assert abs(result["mvp_total_fit_time_s"] - 1.1) < 0.01
     assert "logreg" in result["mean_fit_per_model_s"]
     assert result["full_run_estimate_s"] > 0
+
+
+def test_check7_fails_when_probe_returns_zero_fits(monkeypatch):
+    """Check 7 FAIL: timing probe produces no fit rows -> passed == False."""
+    import app.engine.runner as runner_mod
+
+    def empty_execute(plan, out_dir, run_meta, **kwargs):
+        # Write an empty raw_results.csv with only headers but no data rows
+        import csv as csv_mod
+        out_dir.mkdir(parents=True, exist_ok=True)
+        with open(out_dir / "raw_results.csv", "w", newline="") as f:
+            writer = csv_mod.writer(f)
+            writer.writerow(["dataset", "model", "combo", "level", "seed",
+                             "macro_f1", "accuracy", "status", "fit_time_s"])
+            # No data rows written
+
+    monkeypatch.setattr(runner_mod, "execute_plan", empty_execute)
+
+    result = check_runtime(mvp_csv_path=None, probe_dataset="breast_cancer")
+    assert not result["passed"], "Should FAIL when timing probe returns 0 fits"
+    assert result["probe_fits"] == 0
+    assert any("0 fit results" in f for f in result["failures"])

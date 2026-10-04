@@ -405,15 +405,53 @@ _REPRO_SUBSET = {
 }
 
 
-def check_reproducibility(mvp_csv_path=None, run_meta=None):
-    """Check 5: re-running fixed subset gives byte-identical metrics.
+def _filter_repro_subset(df):
+    """Filter a raw_results DataFrame to the exact fixed reproducibility subset.
 
-    If mvp_csv_path exists, compare against MVP results.
-    Otherwise run twice in temp dirs and compare the two runs.
+    Level 0 is represented by combo='clean' rows (one per dataset/model/seed).
+    Levels 3 and 5 are noisy rows for the two specified combos.
+    No raw rows exist with combo='label'/level=0 or combo='label+gaussian'/level=0.
+    """
+    subset = _REPRO_SUBSET
+
+    # Level 0: clean rows
+    clean_mask = (
+        (df["dataset"] == subset["dataset"])
+        & (df["model"].isin(subset["models"]))
+        & (df["seed"] == subset["seed"])
+        & (df["combo"] == "clean")
+        & (df["level"] == 0)
+    )
+
+    # Levels 3 and 5: noisy rows for the two combos only
+    noisy_mask = (
+        (df["dataset"] == subset["dataset"])
+        & (df["model"].isin(subset["models"]))
+        & (df["seed"] == subset["seed"])
+        & (df["combo"].isin(subset["noises"]))
+        & (df["level"].isin([3, 5]))
+    )
+
+    return df[clean_mask | noisy_mask].copy()
+
+
+def check_reproducibility(mvp_csv_path=None, run_meta=None):
+    """Check 5: re-running the fixed subset gives EXACTLY identical metrics.
+
+    Fixed subset:
+      dataset=breast_cancer, seed=0, all 4 models,
+      combos label and label+gaussian, levels 0 (clean), 3, 5.
+
+    Level 0 is represented by combo='clean' rows; no separate non-clean level-0 rows exist.
+
+    Comparison is STRICT equality (==) for macro_f1 and accuracy.
+
+    If mvp_csv_path exists, compare one fresh run against those MVP results.
+    Otherwise run twice and compare the two runs.
     """
     import tempfile
     import pandas as pd
-    from app.engine.runner import build_plan, execute_plan, FitSpec
+    from app.engine.runner import build_plan, execute_plan
     from app.core.hashing import compute_config_hash
     from app.core.levels import load_levels
 
@@ -443,55 +481,45 @@ def check_reproducibility(mvp_csv_path=None, run_meta=None):
     details = []
     compare_source = ""
 
-    def _run_to_df(out_dir):
-        execute_plan(plan, out_dir, meta)
-        return pd.read_csv(out_dir / "raw_results.csv")
-
     KEY_COLS = ["dataset", "model", "combo", "level", "seed"]
-    METRIC_COLS = ["macro_f1", "accuracy", "status"]
+
+    def _run_and_filter(out_dir):
+        execute_plan(plan, out_dir, meta)
+        raw = pd.read_csv(out_dir / "raw_results.csv")
+        return _filter_repro_subset(raw)
 
     if mvp_csv_path is not None and Path(mvp_csv_path).exists():
-        # Compare fresh run against MVP
-        ref_df = pd.read_csv(mvp_csv_path)
+        # One fresh run compared against the existing MVP results
         compare_source = "mvp_csv"
         with tempfile.TemporaryDirectory() as td:
-            fresh_df = _run_to_df(Path(td))
+            fresh_sub = _run_and_filter(Path(td))
+        ref_sub = _filter_repro_subset(pd.read_csv(mvp_csv_path))
 
-        for df_src, label in [(fresh_df, "fresh"), (ref_df, "mvp")]:
-            pass  # just proceed to merge
-
-        # Filter ref to the subset scope
-        ref_sub = ref_df[
-            (ref_df["dataset"] == subset["dataset"])
-            & (ref_df["model"].isin(subset["models"]))
-            & (ref_df["seed"] == subset["seed"])
-        ].copy()
-
-        # Only keep rows that appear in both (by key)
-        merged = fresh_df.merge(ref_sub, on=KEY_COLS, suffixes=("_fresh", "_ref"))
+        merged = fresh_sub.merge(ref_sub, on=KEY_COLS, suffixes=("_fresh", "_ref"))
+        n_compared = len(merged)
         for col in ["macro_f1", "accuracy"]:
-            mismatch = merged[abs(merged[f"{col}_fresh"] - merged[f"{col}_ref"]) > 1e-9]
+            mismatch = merged[merged[f"{col}_fresh"] != merged[f"{col}_ref"]]
             for _, row in mismatch.iterrows():
                 failures.append(
                     f"Repro mismatch vs MVP: {col} model={row['model']} combo={row['combo']} "
-                    f"L{row['level']} fresh={row[f'{col}_fresh']:.6f} ref={row[f'{col}_ref']:.6f}"
+                    f"L{row['level']} fresh={row[f'{col}_fresh']!r} ref={row[f'{col}_ref']!r}"
                 )
-        details.append(f"Compared {len(merged)} rows against MVP CSV")
+        details.append(
+            f"Compared {n_compared} subset rows (clean L0 + noisy L3/L5) against MVP CSV"
+        )
+
     else:
-        # Run twice in separate temp dirs, compare
+        # Two fresh runs compared against each other
         compare_source = "two_fresh_runs"
         with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
-            df1 = _run_to_df(Path(td1))
-            df2 = _run_to_df(Path(td2))
+            df1 = _run_and_filter(Path(td1))
+            df2 = _run_and_filter(Path(td2))
 
         df1s = df1.sort_values(KEY_COLS).reset_index(drop=True)
         df2s = df2.sort_values(KEY_COLS).reset_index(drop=True)
 
         for col in ["macro_f1", "accuracy", "status"]:
-            if col == "status":
-                mismatch_mask = df1s[col] != df2s[col]
-            else:
-                mismatch_mask = (df1s[col] - df2s[col]).abs() > 1e-9
+            mismatch_mask = df1s[col] != df2s[col]
             for i in mismatch_mask[mismatch_mask].index:
                 row = df1s.iloc[i]
                 failures.append(
@@ -499,7 +527,9 @@ def check_reproducibility(mvp_csv_path=None, run_meta=None):
                     f"combo={row['combo']} L{row['level']}: "
                     f"{df1s.at[i, col]!r} vs {df2s.at[i, col]!r}"
                 )
-        details.append(f"Compared two fresh runs ({len(df1s)} rows each)")
+        details.append(
+            f"Compared two fresh runs ({len(df1s)} subset rows each: clean L0 + noisy L3/L5)"
+        )
 
     passed = len(failures) == 0
     return {
@@ -668,6 +698,13 @@ def check_runtime(mvp_csv_path=None, probe_dataset="digits"):
     FULL_RUN_FITS = 6080
     full_run_estimate_s = mean_probe_fit_s * FULL_RUN_FITS
     full_run_estimate_min = full_run_estimate_s / 60.0
+
+    # Failure condition: timing probe must produce at least one fit result
+    if probe_fits == 0:
+        failures.append(
+            f"Timing probe produced 0 fit results on dataset={probe_dataset}: "
+            "cannot estimate full-run time"
+        )
 
     details.append(
         f"Timing probe: {probe_fits} fits in {probe_elapsed:.2f}s "
