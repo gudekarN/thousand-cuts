@@ -5,16 +5,19 @@ RNG is always deterministic: np.random.default_rng(np.random.SeedSequence([seed,
 No Python hash(), no global numpy random state.
 """
 
-from typing import Any, Optional, Sequence, Tuple, Union
+from itertools import combinations
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 import numpy as np
 
 from app.core.config import (
     NOISE_IDS,
+    NOISE_ORDER,
     NOISE_LABEL,
     NOISE_GAUSSIAN,
     NOISE_OUTLIERS,
     NOISE_MISSING,
 )
+from app.core.levels import get_params
 
 __all__ = [
     "NOISE_IDS",
@@ -28,6 +31,9 @@ __all__ = [
     "inject_gaussian",
     "inject_outliers",
     "inject_missing",
+    "canonical_combo",
+    "list_all_combos",
+    "apply_noise",
 ]
 
 
@@ -323,4 +329,102 @@ def inject_missing(
     X_noisy[mask] = np.nan
 
     return X_noisy, n_cells
+
+
+def canonical_combo(names: Union[str, Sequence[str]]) -> str:
+    """Return 'label+gaussian' style string in the fixed order, regardless of input order."""
+    if isinstance(names, str):
+        if "+" in names:
+            names = names.split("+")
+        else:
+            names = [names]
+    
+    # Filter and sort according to NOISE_ORDER
+    ordered_names = [n for n in NOISE_ORDER if n in names]
+    
+    # Validate
+    for n in names:
+        if n not in NOISE_ORDER:
+            raise ValueError(f"Unknown noise type in combo: {n}")
+            
+    if not ordered_names:
+        raise ValueError("Empty combo provided")
+        
+    return "+".join(ordered_names)
+
+
+def list_all_combos() -> List[str]:
+    """Return the 15 combos ordered by number of noises, then canonical order."""
+    combos = []
+    for r in range(1, 5):
+        for combo_tuple in combinations(NOISE_ORDER, r):
+            combos.append("+".join(combo_tuple))
+    return combos
+
+
+def apply_noise(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    combo: str,
+    level: int,
+    seed: int,
+    classes: Optional[Union[Sequence[Any], np.ndarray]] = None,
+) -> Tuple[np.ndarray, np.ndarray, Dict[str, Any]]:
+    """Apply compound noise logic.
+    
+    Uses levels.get_params(level) and clean_stats from the clean X_train. 
+    Order: label, gaussian, outliers, missing. 
+    Level 0 returns unchanged copies. 
+    noise_stats keys: label_flipped, gaussian_cells, outlier_cells, missing_cells, n_train, n_cells.
+    """
+    if level < 0 or level > 5:
+        raise ValueError(f"level must be 0-5, got {level}")
+        
+    combo_canonical = canonical_combo(combo)
+    
+    X_noisy = np.asarray(X_train, dtype=np.float64).copy()
+    y_noisy = np.asarray(y_train).copy()
+    
+    n_train = X_noisy.shape[0]
+    n_cells = X_noisy.size
+    
+    noise_stats = {
+        "label_flipped": 0,
+        "gaussian_cells": 0,
+        "outlier_cells": 0,
+        "missing_cells": 0,
+        "n_train": n_train,
+        "n_cells": n_cells,
+    }
+    
+    if level == 0:
+        return X_noisy, y_noisy, noise_stats
+        
+    params = get_params(level)
+    mean_clean, std_clean = clean_stats(X_train)
+    
+    noises = combo_canonical.split("+")
+    
+    if "label" in noises:
+        rng = make_rng(seed, "label", level)
+        y_noisy, n_flipped = inject_label(y_noisy, params["label_flip_rate"], rng, classes)
+        noise_stats["label_flipped"] = n_flipped
+        
+    if "gaussian" in noises:
+        rng = make_rng(seed, "gaussian", level)
+        X_noisy, n_gauss = inject_gaussian(X_noisy, params["gaussian_k"], std_clean, rng)
+        noise_stats["gaussian_cells"] = n_gauss
+        
+    if "outliers" in noises:
+        rng = make_rng(seed, "outliers", level)
+        X_noisy, n_outliers = inject_outliers(X_noisy, params["outlier_cell_rate"], mean_clean, std_clean, rng)
+        noise_stats["outlier_cells"] = n_outliers
+        
+    if "missing" in noises:
+        rng = make_rng(seed, "missing", level)
+        X_noisy, n_missing = inject_missing(X_noisy, params["missing_cell_rate"], rng)
+        noise_stats["missing_cells"] = n_missing
+        
+    return X_noisy, y_noisy, noise_stats
+
 

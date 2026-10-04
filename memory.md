@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 1.6 (Missing-value injector)
-- Next task: Task 1.7 (Compound noise)
+- Last completed task: Task 1.7 (Compound noise)
+- Next task: Task 1.8 (Model pipelines and leakage test)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -87,3 +87,4 @@
 | 2026-10-04 | Phase 1 | Implemented Gaussian feature-noise injector (noise.py, test_noise_gaussian.py); 9 tests passing (68 total) | Task 1.5 |
 | 2026-10-04 | Phase 1 | Implemented outlier feature-noise injector (noise.py, test_noise_outliers.py); 9 tests passing (77 total) | Task 1.6 |
 | 2026-10-04 | Phase 1 | Implemented missing-value injector (noise.py, test_noise_missing.py); 9 tests passing (86 total) | Task 1.7 |
+| 2026-10-04 | Phase 1 | Implemented compound noise logic (noise.py, test_noise_compound.py); 8 tests passing (94 total) | Task 1.8 |
