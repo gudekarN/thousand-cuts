@@ -17,7 +17,15 @@ from app.core.config import (
     COMBO_CLEAN,
     STAGE_SEEDS,
 )
-from app.engine.noise import list_all_combos, canonical_combo
+import time
+import datetime
+import json
+import numpy as np
+
+from app.engine.data import split
+from app.engine.noise import apply_noise, list_all_combos, canonical_combo
+from app.engine.pipelines import build_pipeline
+from app.engine.metrics import evaluate
 
 
 @dataclass(frozen=True)
@@ -140,3 +148,93 @@ def build_plan(
                             seen.add(spec)
                             
     return fits_final
+
+
+_SPLIT_CACHE = {}
+
+
+def _get_split_cached(dataset: str, seed: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Retrieve train/test split from cache, computing it if necessary.
+    Returns copies to ensure immutability of cached arrays.
+    """
+    key = (dataset, seed)
+    if key not in _SPLIT_CACHE:
+        _SPLIT_CACHE[key] = split(dataset, seed)
+    X_tr, X_te, y_tr, y_te = _SPLIT_CACHE[key]
+    return X_tr.copy(), X_te.copy(), y_tr.copy(), y_te.copy()
+
+
+def run_fit(spec: FitSpec, run_meta: dict) -> dict:
+    """Execute exactly one fit specified by FitSpec.
+    
+    Args:
+        spec: FitSpec object defining the run parameters.
+        run_meta: Dictionary with run metadata (run_id, config_hash, etc.).
+        
+    Returns:
+        A dictionary row mapping to RAW_COLUMNS in CSV storage.
+    """
+    row = {
+        "run_id": run_meta.get("run_id"),
+        "run_type": run_meta.get("run_type"),
+        "stage": run_meta.get("stage"),
+        "dataset": spec.dataset,
+        "model": spec.model,
+        "seed": spec.seed,
+        "combo": spec.combo,
+        "n_noises": len(spec.combo.split("+")) if spec.combo != COMBO_CLEAN else 0,
+        "level": spec.level,
+        "macro_f1": float("nan"),
+        "accuracy": float("nan"),
+        "fit_time_s": float("nan"),
+        "n_train": 0,
+        "n_test": 0,
+        "noise_stats": "{}",
+        "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "config_hash": run_meta.get("config_hash"),
+        "methodology_version": run_meta.get("methodology_version"),
+        "levels_version": run_meta.get("levels_version"),
+        "levels_frozen": run_meta.get("levels_frozen"),
+        "status": "success",
+        "error_msg": "",
+    }
+    
+    try:
+        X_train, X_test, y_train, y_test = _get_split_cached(spec.dataset, spec.seed)
+        row["n_train"] = X_train.shape[0]
+        row["n_test"] = X_test.shape[0]
+        
+        if spec.level == 0 or spec.combo == COMBO_CLEAN:
+            X_train_fit = X_train
+            y_train_fit = y_train
+            noise_stats = {}
+        else:
+            X_train_fit, y_train_fit, noise_stats = apply_noise(
+                X_train, y_train, spec.combo, spec.level, spec.seed
+            )
+            
+        row["noise_stats"] = noise_stats  # Will be serialized to JSON string in csv_store
+        
+        pipeline = build_pipeline(spec.model, spec.seed)
+        
+        start_time = time.time()
+        pipeline.fit(X_train_fit, y_train_fit)
+        end_time = time.time()
+        
+        row["fit_time_s"] = end_time - start_time
+        
+        y_pred = pipeline.predict(X_test)
+        metrics = evaluate(y_test, y_pred)
+        
+        row["macro_f1"] = metrics["macro_f1"]
+        row["accuracy"] = metrics["accuracy"]
+        
+    except Exception as e:
+        row["status"] = "error"
+        row["error_msg"] = str(e)
+        row["macro_f1"] = float("nan")
+        row["accuracy"] = float("nan")
+        row["fit_time_s"] = float("nan")
+        
+    row["timestamp_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return row
