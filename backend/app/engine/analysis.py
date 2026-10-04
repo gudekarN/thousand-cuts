@@ -283,3 +283,89 @@ def compute_synergy(summary: pd.DataFrame, baselines: pd.DataFrame) -> pd.DataFr
         ])
         
     return pd.DataFrame(results)
+
+
+from pathlib import Path
+
+SINGLES = {NOISE_LABEL, NOISE_GAUSSIAN, NOISE_OUTLIERS, NOISE_MISSING}
+
+def compute_robustness(breaking_points: pd.DataFrame, summary: pd.DataFrame) -> pd.DataFrame:
+    """
+    Compute robustness (BPI, RS) and rank.
+    """
+    results = []
+    
+    if breaking_points.empty or summary.empty:
+        return pd.DataFrame(columns=["dataset", "model", "scope", "BPI", "RS", "rank"])
+        
+    for dataset in summary["dataset"].unique():
+        for model in summary["model"].unique():
+            
+            dm_bp = breaking_points[(breaking_points["dataset"] == dataset) & (breaking_points["model"] == model)]
+            dm_sum = summary[(summary["dataset"] == dataset) & (summary["model"] == model) & (summary["level"] > 0)]
+            
+            if dm_bp.empty or dm_sum.empty:
+                continue
+                
+            for scope in ["singles", "all"]:
+                if scope == "singles":
+                    scope_bp = dm_bp[dm_bp["combo"].isin(SINGLES)]
+                    scope_sum = dm_sum[dm_sum["combo"].isin(SINGLES)]
+                else:
+                    scope_bp = dm_bp
+                    scope_sum = dm_sum
+                    
+                if scope_bp.empty or scope_sum.empty:
+                    continue
+                    
+                bpi_vals = []
+                for _, bp_row in scope_bp.iterrows():
+                    if bp_row["reached"]:
+                        bpi_vals.append(bp_row["breaking_level"])
+                    else:
+                        bpi_vals.append(6)
+                bpi = float(np.mean(bpi_vals))
+                
+                rs = float(scope_sum["rel_f1"].mean())
+                
+                results.append({
+                    "dataset": dataset,
+                    "model": model,
+                    "scope": scope,
+                    "BPI": bpi,
+                    "RS": rs
+                })
+                
+    rob_df = pd.DataFrame(results)
+    if rob_df.empty:
+        return pd.DataFrame(columns=["dataset", "model", "scope", "BPI", "RS", "rank"])
+        
+    rob_df["rank"] = 0
+    for (dataset, scope), group in rob_df.groupby(["dataset", "scope"]):
+        ranks = group[["BPI", "RS"]].apply(tuple, axis=1).rank(ascending=False, method="min").astype(int)
+        rob_df.loc[group.index, "rank"] = ranks
+    
+    return rob_df.sort_values(by=["dataset", "scope", "rank"]).reset_index(drop=True)
+
+
+def write_all_outputs(raw_csv_path: str | Path, out_dir: str | Path):
+    """
+    Write all derived CSVs.
+    """
+    raw_path = Path(raw_csv_path)
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    
+    df = pd.read_csv(raw_path)
+    
+    baselines, _ = compute_baselines(df)
+    summary, _ = compute_summary(df, baselines)
+    breaking = compute_breaking_points(df, summary, baselines)
+    synergy = compute_synergy(summary, baselines)
+    robustness = compute_robustness(breaking, summary)
+    
+    baselines.to_csv(out / "baselines.csv", index=False)
+    summary.to_csv(out / "summary.csv", index=False)
+    breaking.to_csv(out / "breaking_points.csv", index=False)
+    synergy.to_csv(out / "synergy.csv", index=False)
+    robustness.to_csv(out / "robustness.csv", index=False)
