@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 1.4 (Gaussian feature-noise injector)
-- Next task: Task 1.5 (Outlier injector)
+- Last completed task: Task 1.5 (Outlier injector)
+- Next task: Task 1.6 (Missing-value injector)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -85,3 +85,4 @@
 | 2026-10-04 | Phase 1 | Implemented levels loader and config hash (levels.py, hashing.py); 10 tests passing | Task 1.3 |
 | 2026-10-04 | Phase 1 | Implemented noise helpers and label-noise injector (noise.py, test_noise_label.py); 29 tests passing (59 total) | Task 1.4 |
 | 2026-10-04 | Phase 1 | Implemented Gaussian feature-noise injector (noise.py, test_noise_gaussian.py); 9 tests passing (68 total) | Task 1.5 |
+| 2026-10-04 | Phase 1 | Implemented outlier feature-noise injector (noise.py, test_noise_outliers.py); 8 tests passing (76 total) | Task 1.6 |

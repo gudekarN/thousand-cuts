@@ -26,6 +26,7 @@ __all__ = [
     "clean_stats",
     "inject_label",
     "inject_gaussian",
+    "inject_outliers",
 ]
 
 
@@ -205,3 +206,78 @@ def inject_gaussian(
         X_noisy[:, zero_cols] = X_arr[:, zero_cols]
 
     return X_noisy, n_cells_perturbed
+
+
+def inject_outliers(
+    X: np.ndarray,
+    rate: float,
+    mean_clean: np.ndarray,
+    std_clean: np.ndarray,
+    rng: np.random.Generator,
+    sigma: int = 5,
+) -> Tuple[np.ndarray, int]:
+    """Inject outlier noise into eligible cells.
+
+    Eligible cells = columns with std_clean > 0.
+    Chooses round(rate * eligible_cells) without replacement.
+    Sets each to mean_clean + sign * sigma * std_clean, sign random +1/-1.
+    Rate 0 returns identical copy.
+    Never modifies input array in place.
+
+    Args:
+        X: 2D feature matrix of shape (n_samples, n_features).
+        rate: Outlier rate in [0.0, 1.0].
+        mean_clean: Per-column means from clean train set, shape (n_features,).
+        std_clean: Per-column standard deviations from clean train set, shape (n_features,).
+        rng: NumPy Generator instance.
+        sigma: Standard deviation multiplier (default 5).
+
+    Returns:
+        Tuple of (X_noisy, n_cells_replaced).
+    """
+    if rate < 0.0 or rate > 1.0:
+        raise ValueError(f"rate must be in [0.0, 1.0], got {rate}")
+
+    X_arr = np.asarray(X, dtype=np.float64)
+    if X_arr.ndim != 2:
+        raise ValueError(f"X must be a 2D array, got shape {X_arr.shape}")
+
+    mean_arr = np.asarray(mean_clean, dtype=np.float64)
+    std_arr = np.asarray(std_clean, dtype=np.float64)
+
+    n_samples, n_features = X_arr.shape
+    if mean_arr.ndim != 1 or len(mean_arr) != n_features:
+        raise ValueError("mean_clean must be 1D with length matching X features")
+    if std_arr.ndim != 1 or len(std_arr) != n_features:
+        raise ValueError("std_clean must be 1D with length matching X features")
+
+    if rate == 0.0:
+        return X_arr.copy(), 0
+
+    valid_cols = np.where(std_arr > 0.0)[0]
+    n_valid_cols = len(valid_cols)
+    total_eligible = n_samples * n_valid_cols
+
+    if total_eligible == 0:
+        return X_arr.copy(), 0
+
+    n_cells = int(round(rate * total_eligible))
+    if n_cells == 0:
+        return X_arr.copy(), 0
+    if n_cells > total_eligible:
+        n_cells = total_eligible
+
+    # Sample exactly n_cells indices without replacement from 0 to total_eligible - 1
+    flat_indices = rng.choice(total_eligible, size=n_cells, replace=False)
+
+    row_indices = flat_indices // n_valid_cols
+    valid_col_indices = flat_indices % n_valid_cols
+    col_indices = valid_cols[valid_col_indices]
+
+    signs = rng.choice([-1, 1], size=n_cells)
+    outlier_values = mean_arr[col_indices] + signs * sigma * std_arr[col_indices]
+
+    X_noisy = X_arr.copy()
+    X_noisy[row_indices, col_indices] = outlier_values
+
+    return X_noisy, n_cells
