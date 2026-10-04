@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 1.2 (Levels loader and config hash)
-- Next task: Task 1.3 (Noise helpers and label noise)
+- Last completed task: Task 1.3 (Noise helpers and label noise)
+- Next task: Task 1.4 (Gaussian feature-noise injector)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -83,3 +83,4 @@
 | 2026-10-04 | Phase 0 | Created methodology constants (config.py, no logic, no sklearn imports) and structure tests (test_config.py, test_structure.py); 14 tests passing | Gate 0 / Task 1.1 |
 | 2026-10-04 | Phase 1 | Implemented dataset loading and stratified splits (data.py); 6 tests passing | Task 1.2 |
 | 2026-10-04 | Phase 1 | Implemented levels loader and config hash (levels.py, hashing.py); 10 tests passing | Task 1.3 |
+| 2026-10-04 | Phase 1 | Implemented noise helpers and label-noise injector (noise.py, test_noise_label.py); 29 tests passing (59 total) | Task 1.4 |
