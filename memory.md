@@ -95,3 +95,4 @@
 | 2026-10-04 | Phase 1 | Implemented experiment plan builder (runner.py, test_plan.py); 7 tests passing (140 total) | Task 1.13 |
 | 2026-10-04 | Phase 1 | Implemented single fit execution (runner.py, test_run_fit.py); 5 tests passing (145 total) | Task 1.14 |
 | 2026-10-04 | Phase 1 | Implemented execute_plan with resume, cancel, freeze guard (runner.py, test_execute.py); 7 tests passing (152 total) | Task 1.15 |
+| 2026-10-04 | Phase 1 | Task 1.14 corrective fix: official resume now calls verify_frozen_hash(); added STAGE_FULL test; 11 test_execute tests, 156 total passing | Task 1.14 fix |

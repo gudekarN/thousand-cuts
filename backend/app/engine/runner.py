@@ -289,8 +289,11 @@ def execute_plan(
             )
         verify_frozen_hash()
 
-    # Guard: if resuming an official run, verify config_hash matches existing manifest
+    # Guard: if resuming an official run, require frozen levels and verify hashes.
+    # This applies to ANY official run resume (mvp, stage2, full).
     if resume and manifest_path.exists() and run_type == "official":
+        # Requires frozen levels; raises if not frozen or levels.json hash mismatch
+        verify_frozen_hash()
         existing = read_json(manifest_path)
         existing_hash = existing.get("config_hash")
         current_hash = compute_config_hash()
