@@ -4,7 +4,8 @@ Builds deterministic execution plans for official stages and custom runs.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
 from app.core.config import (
     DATASET_BREAST_CANCER,
@@ -238,3 +239,121 @@ def run_fit(spec: FitSpec, run_meta: dict) -> dict:
         
     row["timestamp_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return row
+
+
+def execute_plan(
+    plan: List[FitSpec],
+    out_dir: Path,
+    run_meta: Dict[str, Any],
+    progress_cb: Optional[Callable[[int, int, FitSpec], None]] = None,
+    cancel_check: Optional[Callable[[], bool]] = None,
+    resume: bool = True,
+) -> Dict[str, Any]:
+    """Execute a list of FitSpecs, writing results to out_dir.
+
+    Args:
+        plan: List of FitSpec objects to execute.
+        out_dir: Directory to write manifest.json and raw_results.csv.
+        run_meta: Metadata dict with run_id, run_type, stage, config_hash, etc.
+        progress_cb: Optional callable(done, total, current_spec) called after each fit.
+        cancel_check: Optional callable returning True if the run should be cancelled.
+        resume: If True, skip already-completed specs from a previous partial run.
+
+    Returns:
+        Dict with 'status', 'completed_fits', 'total_fits'.
+
+    Raises:
+        ValueError: If the freeze guard or hash check fails for stage2/full runs.
+    """
+    from app.core.hashing import verify_frozen_hash, compute_config_hash
+    from app.core.levels import is_frozen
+    from app.storage.csv_store import append_row, completed_keys, RAW_COLUMNS
+    from app.storage.json_store import write_json_atomic, read_json
+    from app.storage.manifest import build_manifest, finalize_manifest
+
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    stage = run_meta.get("stage", "")
+    run_type = run_meta.get("run_type", "custom")
+    csv_path = out_dir / "raw_results.csv"
+    manifest_path = out_dir / "manifest.json"
+
+    # Guard: stage2 and full require frozen levels
+    requires_freeze = stage in (STAGE_STAGE2, STAGE_FULL)
+    if requires_freeze:
+        if not is_frozen():
+            raise ValueError(
+                f"Stage '{stage}' requires frozen levels but levels are not frozen. "
+                "Run `validate.py freeze` first."
+            )
+        verify_frozen_hash()
+
+    # Guard: if resuming an official run, verify config_hash matches existing manifest
+    if resume and manifest_path.exists() and run_type == "official":
+        existing = read_json(manifest_path)
+        existing_hash = existing.get("config_hash")
+        current_hash = compute_config_hash()
+        if existing_hash and existing_hash != current_hash:
+            raise ValueError(
+                f"Config hash mismatch on resume. "
+                f"Stored: {existing_hash}, Current: {current_hash}. "
+                "Cannot resume a run with a different configuration."
+            )
+
+    # Write manifest on first run (not resuming or manifest doesn't exist)
+    if not manifest_path.exists():
+        seeds = sorted({spec.seed for spec in plan})
+        manifest = build_manifest(
+            run_id=run_meta.get("run_id", ""),
+            run_type=run_type,
+            stage=stage,
+            plan_summary={"planned_fits": len(plan), "seeds": seeds},
+            requested_config=run_meta.get("requested_config", {}),
+        )
+        write_json_atomic(manifest_path, manifest)
+
+    # Build set of already-completed keys to skip (resume logic)
+    skip_keys = set()
+    if resume and csv_path.exists():
+        skip_keys = completed_keys(csv_path)
+
+    total = len(plan)
+    done = 0
+    cancelled = False
+
+    for spec in plan:
+        # Check if already done
+        key = (spec.dataset, spec.model, spec.combo, spec.level, spec.seed)
+        if key in skip_keys:
+            done += 1
+            if progress_cb:
+                progress_cb(done, total, spec)
+            continue
+
+        # Check cancellation before each fit
+        if cancel_check and cancel_check():
+            cancelled = True
+            break
+
+        row = run_fit(spec, run_meta)
+
+        # Mark successful rows as 'ok' for the completed_keys filter
+        if row["status"] == "success":
+            row["status"] = "ok"
+
+        append_row(csv_path, row)
+        done += 1
+
+        if progress_cb:
+            progress_cb(done, total, spec)
+
+    # Finalize manifest
+    final_status = "cancelled" if cancelled else "completed"
+    finalize_manifest(manifest_path, final_status, done)
+
+    return {
+        "status": final_status,
+        "completed_fits": done,
+        "total_fits": total,
+    }
