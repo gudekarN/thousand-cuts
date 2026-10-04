@@ -7,8 +7,8 @@
 - Current phase: **Phase 0**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 0.1 (Python 3.11 environment setup)
-- Next task: Task 0.2 (Constants and structure check)
+- Last completed task: Task 0.2 (Methodology constants and structure check)
+- Next task: Gate 0 approval / Phase 1, Task 1.1
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -80,3 +80,4 @@
 | 2026-10-04 | Planning | Documentation consistency fix: updated 47 stale Architecture section references in execution_plan.md (sections renumbered after 4.2/4.3/4.6/5/6.6 were added); removed stale custom-seed open item from memory.md (already resolved as D-024); cross-document audit passed with no methodology changes; two stale references found in rules.md (lines 14 and 138) reported to user for decision | Phase 0, Task 0.1 |
 | 2026-10-04 | Planning | Fixed final 2 stale Architecture refs in rules.md: R-M2 (models) 4.2→4.4; API error shape section 7→8. All seven docs now consistent. No methodology changes. | Phase 0, Task 0.1 |
 | 2026-10-04 | Phase 0 | Created Python 3.11 venv and installed pinned dependencies | Task 0.2 |
+| 2026-10-04 | Phase 0 | Created methodology constants (config.py, no logic, no sklearn imports) and structure tests (test_config.py, test_structure.py); 14 tests passing | Gate 0 / Task 1.1 |
