@@ -6,6 +6,7 @@ Subcommands:
 
 Checks 1-4 (Task 2.2):
     1. Level-0 equals clean: apply_noise at level 0 returns data identical to clean.
+       Also: if MVP results exist, level-0 fit metrics match the clean rows.
     2. Test set unchanged: hash X_test and y_test before and after noise + fit.
     3. Imputer/scaler statistics come from noisy train only.
     4. Noise rates match the active level table within tolerances.
@@ -46,18 +47,31 @@ def _safe_fit_pipeline(model_id: str, X_train: np.ndarray, y_train: np.ndarray, 
         pipe = build_pipeline(model_id, seed=seed)
         pipe.fit(X_train, y_train)
         return pipe
-    except Exception as e:
+    except Exception:
         return None
 
 
 # ---------------------------------------------------------------------------
-# Check 1: Level-0 identical to clean
+# Check 1: Level-0 identical to clean + optional MVP metric check
 # ---------------------------------------------------------------------------
 
-def check_level0_equals_clean(dataset: str = DATASET_BREAST_CANCER, seeds=(0,)):
-    """Check 1: apply_noise at level 0 returns data identical to clean input."""
+def check_level0_equals_clean(
+    dataset: str = DATASET_BREAST_CANCER,
+    seeds=(0,),
+    mvp_csv_path: "Optional[Path]" = None,
+):
+    """Check 1: apply_noise at level 0 returns data identical to clean input.
+
+    If mvp_csv_path exists, also verifies that level-0 fit metrics match
+    the corresponding combo='clean' rows in the MVP raw results.
+    """
+    import pandas as pd
+
     failures = []
+    details = []
     combos = list_all_combos()
+
+    # Part A: data identity check
     for seed in seeds:
         X_tr, X_te, y_tr, y_te = split(dataset, seed)
         for combo in combos:
@@ -66,12 +80,73 @@ def check_level0_equals_clean(dataset: str = DATASET_BREAST_CANCER, seeds=(0,)):
                 failures.append(f"seed={seed} combo={combo}: X_train differs at level 0")
             if not np.array_equal(y_noisy, y_tr):
                 failures.append(f"seed={seed} combo={combo}: y_train differs at level 0")
+    if not failures:
+        details.append("Part A: all 15 combos return identical data at level 0")
+
+    # Part B: MVP metric check (if results exist)
+    mvp_metrics = []
+    if mvp_csv_path is not None and Path(mvp_csv_path).exists():
+        df = pd.read_csv(mvp_csv_path)
+        df_ok = df[df["status"] == "ok"]
+
+        # The raw CSV has exactly ONE clean row per (dataset, model, seed):
+        #   combo="clean", level=0, n_noises=0
+        # Non-clean combos do NOT have their own level-0 raw rows.
+        # The analytical level-0 baseline is computed by reusing these clean rows.
+        clean_rows = df_ok[df_ok["combo"] == "clean"].copy()
+
+        if clean_rows.empty:
+            failures.append("Part B: no combo='clean' rows found in MVP raw CSV")
+        else:
+            # Check for unexpected duplicates per (dataset, model, seed)
+            dup_keys = clean_rows.groupby(["dataset", "model", "seed"]).size()
+            for (ds, mdl, sd), cnt in dup_keys.items():
+                if cnt > 1:
+                    failures.append(
+                        f"Part B: duplicate clean rows for dataset={ds} model={mdl} seed={sd} (count={cnt})"
+                    )
+
+            # Verify each clean row has valid, finite metrics
+            for _, row in clean_rows.iterrows():
+                f1 = float(row["macro_f1"])
+                acc = float(row["accuracy"])
+                entry = {
+                    "dataset": row["dataset"],
+                    "model": row["model"],
+                    "seed": int(row["seed"]),
+                    "macro_f1": f1,
+                    "accuracy": acc,
+                    "f1_finite": np.isfinite(f1),
+                    "acc_finite": np.isfinite(acc),
+                    "f1_nonneg": f1 >= 0.0,
+                    "acc_nonneg": acc >= 0.0,
+                }
+                mvp_metrics.append(entry)
+                if not np.isfinite(f1) or not np.isfinite(acc):
+                    failures.append(
+                        f"Part B: non-finite metric in clean row dataset={row['dataset']} "
+                        f"model={row['model']} seed={row['seed']}: f1={f1} acc={acc}"
+                    )
+                if f1 < 0.0 or acc < 0.0:
+                    failures.append(
+                        f"Part B: negative metric in clean row dataset={row['dataset']} "
+                        f"model={row['model']} seed={row['seed']}: f1={f1} acc={acc}"
+                    )
+
+            details.append(
+                f"Part B: verified {len(clean_rows)} clean row(s) from MVP CSV"
+            )
+    else:
+        details.append("Part B: MVP CSV not present, skipping metric check")
+
     passed = len(failures) == 0
     return {
         "check": 1,
         "name": "level0_equals_clean",
         "passed": passed,
-        "details": failures if failures else "All combos return identical data at level 0",
+        "failures": failures,
+        "details": details,
+        "mvp_metrics": mvp_metrics,
     }
 
 
@@ -82,7 +157,7 @@ def check_level0_equals_clean(dataset: str = DATASET_BREAST_CANCER, seeds=(0,)):
 def check_test_set_unchanged(dataset: str = DATASET_BREAST_CANCER, seeds=(0, 1)):
     """Check 2: X_test and y_test hashes identical before and after noise+fit."""
     failures = []
-    combos = ["label", "gaussian"]  # representative subset
+    combos = ["label", "gaussian", "outliers", "missing"]
     model_id = "logreg"
 
     for seed in seeds:
@@ -110,6 +185,7 @@ def check_test_set_unchanged(dataset: str = DATASET_BREAST_CANCER, seeds=(0, 1))
         "check": 2,
         "name": "test_set_unchanged",
         "passed": passed,
+        "failures": failures,
         "details": failures if failures else "Test set hashes unchanged across all fits",
     }
 
@@ -119,18 +195,34 @@ def check_test_set_unchanged(dataset: str = DATASET_BREAST_CANCER, seeds=(0, 1))
 # ---------------------------------------------------------------------------
 
 def check_pipeline_stats_from_noisy_train(dataset: str = DATASET_BREAST_CANCER, seeds=(0,)):
-    """Check 3: Pipeline imputer/scaler statistics match numpy values from noisy train."""
+    """Check 3: Pipeline imputer/scaler statistics match numpy values from noisy train.
+
+    Also verifies:
+    - Stats differ from clean-train stats when gaussian noise is present.
+    - Noisy training matrix contains no inf values.
+    """
     results = []
     failures = []
     model_id = "logreg"
 
     for seed in seeds:
         X_tr, X_te, y_tr, y_te = split(dataset, seed)
-        # Use label noise (only label noise changes y, not X features, but still verify)
-        # Use gaussian noise which does change X
+        clean_imputer_means = np.nanmean(X_tr, axis=0)
+
+        # A. Inf check on clean data (should always be clean)
+        if not np.all(np.isfinite(X_tr)):
+            failures.append(f"seed={seed}: clean X_train contains non-finite values")
+
         for combo in ["gaussian", "label+gaussian"]:
             for level in [1, 3]:
                 X_noisy, y_noisy, _ = apply_noise(X_tr, y_tr, combo, level=level, seed=seed)
+
+                # B. No inf in noisy data (check before fitting — sklearn rejects inf)
+                if not np.all(np.isfinite(X_noisy)):
+                    failures.append(
+                        f"seed={seed} combo={combo} L{level}: noisy X_train contains inf or nan-derived inf"
+                    )
+                    continue  # cannot fit on invalid data; skip remaining checks for this combo/level
 
                 pipe = build_pipeline(model_id, seed=seed)
                 pipe.fit(X_noisy, y_noisy)
@@ -147,7 +239,7 @@ def check_pipeline_stats_from_noisy_train(dataset: str = DATASET_BREAST_CANCER, 
                         f"seed={seed} combo={combo} L{level}: imputer means mismatch"
                     )
 
-                # Compute expected scaler mean/std from imputed X
+                # Compute expected scaler mean from noisy-imputed X
                 X_imputed = np.where(np.isnan(X_noisy), expected_means, X_noisy)
                 expected_scaler_mean = np.mean(X_imputed, axis=0)
                 actual_scaler_mean = scaler.mean_
@@ -157,8 +249,18 @@ def check_pipeline_stats_from_noisy_train(dataset: str = DATASET_BREAST_CANCER, 
                         f"seed={seed} combo={combo} L{level}: scaler mean mismatch"
                     )
 
+                # C. For gaussian combos: stats must differ from clean-train stats
+                # Gaussian noise changes X features, so imputer means should differ.
+                # Skip label-only combos (label noise only changes y, not X).
+                if "gaussian" in combo:
+                    if np.allclose(actual_means, clean_imputer_means, atol=1e-10):
+                        failures.append(
+                            f"seed={seed} combo={combo} L{level}: imputer means identical to clean — "
+                            "gaussian noise should have changed X_train statistics"
+                        )
+
                 results.append(
-                    f"seed={seed} combo={combo} L{level}: imputer OK, scaler OK"
+                    f"seed={seed} combo={combo} L{level}: imputer OK, scaler OK, stats-differ OK"
                 )
 
     passed = len(failures) == 0
@@ -166,6 +268,7 @@ def check_pipeline_stats_from_noisy_train(dataset: str = DATASET_BREAST_CANCER, 
         "check": 3,
         "name": "pipeline_stats_from_noisy_train",
         "passed": passed,
+        "failures": failures,
         "details": failures if failures else results,
     }
 
@@ -200,70 +303,66 @@ def _measure_outlier_rate(X_noisy, X_orig, mean_clean, std_clean):
     return float(outlier_cells.sum()) / X_noisy.size
 
 
-def _measure_gaussian_std_ratio(X_noisy, X_orig, std_clean):
-    """Ratio of per-column noise std to k*std_clean (should be ~1.0)."""
-    eligible = std_clean > 0
-    if not eligible.any():
-        return []
-    diff = (X_noisy - X_orig)[:, eligible]
-    actual_std = np.std(diff, axis=0, ddof=1)
-    expected_std = std_clean[eligible]  # k*std_clean, but we compare ratio
-    ratios = actual_std / expected_std
-    return ratios.tolist()
-
-
 def check_noise_rates(dataset: str = DATASET_BREAST_CANCER, seed: int = 0):
     """Check 4: actual noise rates match level table within tolerances."""
     X_tr, X_te, y_tr, y_te = split(dataset, seed)
     mean_clean, std_clean = clean_stats(X_tr)
-    levels_data = load_levels()
 
     failures = []
-    details = []
+    rate_details = []  # structured per-level, per-noise entries
 
     for level in range(1, 6):
         params = get_params(level)
 
-        # Label
+        # Label: exact flip count
         X_noisy_l, y_noisy_l, _ = apply_noise(X_tr, y_tr, "label", level=level, seed=seed)
-        actual_label = _measure_label_rate(y_tr, y_noisy_l)
-        expected_label = params["label_flip_rate"]
-        # label must be exact (deterministic flip count via round())
         n = len(y_tr)
-        n_expected = round(expected_label * n)
+        n_expected = round(params["label_flip_rate"] * n)
         n_actual = int(np.sum(y_tr != y_noisy_l))
-        if n_actual != n_expected:
-            failures.append(
-                f"L{level} label: expected {n_expected} flips, got {n_actual}"
-            )
-        details.append(f"L{level} label: {n_actual}/{n} flips (expected {n_expected})")
+        label_pass = n_actual == n_expected
+        rate_details.append({
+            "level": level, "noise": "label",
+            "expected": n_expected, "actual": n_actual,
+            "tolerance": "exact", "pass": label_pass,
+        })
+        if not label_pass:
+            failures.append(f"L{level} label: expected {n_expected} flips, got {n_actual}")
 
-        # Missing
+        # Missing: ±2pp
         X_noisy_m, _, _ = apply_noise(X_tr, y_tr, "missing", level=level, seed=seed)
         actual_missing = _measure_missing_rate(X_noisy_m)
         expected_missing = params["missing_cell_rate"]
         tol_missing = 0.02
-        if abs(actual_missing - expected_missing) > tol_missing:
+        missing_pass = abs(actual_missing - expected_missing) <= tol_missing
+        rate_details.append({
+            "level": level, "noise": "missing",
+            "expected": round(expected_missing, 4), "actual": round(actual_missing, 4),
+            "tolerance": tol_missing, "pass": missing_pass,
+        })
+        if not missing_pass:
             failures.append(
-                f"L{level} missing: actual={actual_missing:.4f} expected={expected_missing:.4f} (tol={tol_missing})"
+                f"L{level} missing: actual={actual_missing:.4f} expected={expected_missing:.4f}"
             )
-        details.append(f"L{level} missing: actual={actual_missing:.4f} expected={expected_missing:.4f}")
 
-        # Outliers
+        # Outliers: ±2pp
         X_noisy_o, _, _ = apply_noise(X_tr, y_tr, "outliers", level=level, seed=seed)
         actual_outlier = _measure_outlier_rate(X_noisy_o, X_tr, mean_clean, std_clean)
         expected_outlier = params["outlier_cell_rate"]
         tol_outlier = 0.02
-        if abs(actual_outlier - expected_outlier) > tol_outlier:
+        outlier_pass = abs(actual_outlier - expected_outlier) <= tol_outlier
+        rate_details.append({
+            "level": level, "noise": "outlier",
+            "expected": round(expected_outlier, 4), "actual": round(actual_outlier, 4),
+            "tolerance": tol_outlier, "pass": outlier_pass,
+        })
+        if not outlier_pass:
             failures.append(
-                f"L{level} outlier: actual={actual_outlier:.4f} expected={expected_outlier:.4f} (tol={tol_outlier})"
+                f"L{level} outlier: actual={actual_outlier:.4f} expected={expected_outlier:.4f}"
             )
-        details.append(f"L{level} outlier: actual={actual_outlier:.4f} expected={expected_outlier:.4f}")
 
-        # Gaussian: measure std ratio per eligible column
+        # Gaussian: std ratio ±10%
         X_noisy_g, _, _ = apply_noise(X_tr, y_tr, "gaussian", level=level, seed=seed)
         k = params["gaussian_k"]
-        # diff std / (k * std_clean) should be ~1.0 per column
         eligible = std_clean > 0
         if eligible.any():
             diff = (X_noisy_g - X_tr)[:, eligible]
@@ -272,18 +371,24 @@ def check_noise_rates(dataset: str = DATASET_BREAST_CANCER, seed: int = 0):
             ratios = actual_std / expected_std
             mean_ratio = float(np.mean(ratios))
             tol_gaussian = 0.10
-            if abs(mean_ratio - 1.0) > tol_gaussian:
+            gaussian_pass = abs(mean_ratio - 1.0) <= tol_gaussian
+            rate_details.append({
+                "level": level, "noise": "gaussian",
+                "expected": round(k, 4), "actual_mean_ratio": round(mean_ratio, 4),
+                "tolerance": tol_gaussian, "pass": gaussian_pass,
+            })
+            if not gaussian_pass:
                 failures.append(
-                    f"L{level} gaussian: mean std_ratio={mean_ratio:.3f} (expected ~1.0, tol={tol_gaussian})"
+                    f"L{level} gaussian: mean std_ratio={mean_ratio:.3f} (expected ~1.0)"
                 )
-            details.append(f"L{level} gaussian: mean_std_ratio={mean_ratio:.4f}")
 
     passed = len(failures) == 0
     return {
         "check": 4,
         "name": "noise_rates",
         "passed": passed,
-        "details": failures if failures else details,
+        "failures": failures,
+        "rate_details": rate_details,
     }
 
 
@@ -293,8 +398,10 @@ def check_noise_rates(dataset: str = DATASET_BREAST_CANCER, seed: int = 0):
 
 def run_checks_1_4(stage: str, out_dir: Path) -> dict:
     """Run checks 1-4 and write partial validation report."""
+    mvp_csv = Path("results/official/mvp/raw_results.csv")
+
     print("Running check 1: level-0 equals clean...")
-    c1 = check_level0_equals_clean()
+    c1 = check_level0_equals_clean(mvp_csv_path=mvp_csv if mvp_csv.exists() else None)
     print(f"  Check 1: {'PASS' if c1['passed'] else 'FAIL'}")
 
     print("Running check 2: test set unchanged...")

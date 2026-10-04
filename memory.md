@@ -104,3 +104,5 @@
 | 2026-10-04 | Phase 1 | Engine integration tests: 5 tests (pipeline, determinism, test-set hash, resume, real-results guard); 167 total passing (7.71s) | Task 1.19 |
 | 2026-10-04 | Phase 2 | Implemented run_mvp.py script and tests (dry-run, --limit, output guards). 3/3 tests passing | Task 2.1 |
 | 2026-10-04 | Phase 2 | Implemented validate.py checks 1-4 and tests; 8/8 tests passing (178 total) | Task 2.2 |
+| 2026-10-04 | Phase 2 | Task 2.2 corrective fix: closed 5 gaps in validate.py (Check 1 MVP metrics, Check 2 real FAIL test, Check 3 clean-diff/inf/FAIL test, Check 4 structured details); 12 tests, 182 total | Task 2.2 fix |
+| 2026-10-04 | Phase 2 | Task 2.2 Check 1 semantic fix: Part B now correctly looks only for combo="clean" raw rows (no non-clean level-0 rows exist); 3 new FAIL tests (missing, nonfinite, duplicate); 14 tests, 184 total | Task 2.2 fix2 |
