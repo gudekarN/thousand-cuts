@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 1.19 (Engine integration tests)
-- Next task: Task 2.1 (MVP script) — awaiting APPROVED PHASE 1
+- Last completed task: Task 2.1 (MVP script)
+- Next task: Task 2.2 (Checks 1 to 4)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -102,3 +102,4 @@
 | 2026-10-04 | Phase 1 | Implemented robustness analysis and write_all_outputs (analysis.py, test_analysis_robustness.py); 2 tests passing (162 total) | Task 1.18 |
 | 2026-10-04 | Phase 1 | Task 1.18 corrective fix: added explicit column checks for all five CSV outputs in test_analysis_robustness.py | Task 1.18 fix |
 | 2026-10-04 | Phase 1 | Engine integration tests: 5 tests (pipeline, determinism, test-set hash, resume, real-results guard); 167 total passing (7.71s) | Task 1.19 |
+| 2026-10-04 | Phase 2 | Implemented run_mvp.py script and tests (dry-run, --limit, output guards). 3/3 tests passing | Task 2.1 |
