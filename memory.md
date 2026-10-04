@@ -1,0 +1,80 @@
+# memory.md (project memory)
+
+**Update after every completed task.** Keep entries short and factual. Never delete old entries; add new ones.
+
+## 1. Current state
+- Date created: 2026-10-04
+- Current phase: **Phase 0 (not started)**
+- Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
+- Official results: none
+- Last completed task: project files and folder structure created
+- Next task: Phase 0, set up Python 3.11 environment
+- Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
+- Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
+
+## 2. Approved decisions
+
+| ID | Decision |
+|---|---|
+| D-001 | Datasets: Breast Cancer, Digits |
+| D-002 | Models: Logistic Regression, SVM (RBF), Decision Tree, Random Forest. Fixed defaults, no tuning |
+| D-003 | Noise: label, Gaussian, missing, outliers. Order: label, Gaussian, outliers, missing |
+| D-004 | Metrics: Macro F1 (primary), Accuracy (secondary) |
+| D-005 | Stratified 70/30 split. Noise on train only. Test set untouched |
+| D-006 | Pipeline: Mean Imputer, StandardScaler, Model, fitted on noisy train only |
+| D-007 | Breaking point: first level where mean Macro F1 <= 0.90 x clean baseline |
+| D-008 | Seeds: 0 to 9 official; 0 to 2 for MVP and Stage 2 |
+| D-009 | Stages: MVP, Stage 2, Full. Official and custom results kept separate |
+| D-010 | Level 0 to 5, table A initial. Calibration by objective rule (rules.md section 2), then freeze before Stage 2 |
+| D-011 | Frontend: React, Vite, TypeScript, Tailwind, shadcn/ui, Lucide, Recharts, React Router, TanStack Query. Light and dark themes |
+| D-012 | Backend: Python 3.11, FastAPI, background worker process (spawn), file-based job state |
+| D-013 | Storage: CSV and JSON, no database. Resumable official runs |
+| D-014 | Provenance: run_id, config hash, versions, manifest.json per run |
+| D-015 | Synergy is secondary analysis |
+| D-016 | Ranking: BPI (not reached = 6) with RS tie-break, defined before results |
+| D-017 | Results split into `official/{mvp,stage2,full}/` so MVP and Stage 2 never mix with Full |
+| D-018 | Predefined fallback level tables S and M exist for the one allowed calibration revision |
+| D-019 | `validate.py` has 3 subcommands: checks, calibrate, freeze |
+| D-020 | Level-0 rows use `combo = "clean"`, `n_noises = 0`, written once per (dataset, model, seed). Analysis reuses them as level 0 for every combo |
+| D-021 | Results root can be overridden by env var `RESULTS_ROOT`; tests must never touch real results |
+| D-022 | Extra small modules: `storage/json_store.py`, `storage/results_reader.py`, `engine/figures.py` |
+| D-023 | Extra endpoint: `POST /api/experiments/estimate`; fit-count/time estimation must come from backend plan logic, not duplicated in React |
+| D-024 | Custom `seeds` means a seed COUNT from 1 to 10; actual custom seed values are `0..count-1` |
+| D-025 | Official Full run is single-process in the approved implementation; do not add or use joblib parallelism |
+
+## 3. Calibration log
+(empty. Fill when `validate.py calibrate` is run)
+
+| Date | Test result (T1 to T6) | Action | Approved by |
+|---|---|---|---|
+| | | | |
+
+## 4. Freeze record
+- Frozen: no
+- Frozen at: n/a
+- Reason: n/a
+- Config hash: n/a
+
+## 5. Results snapshot
+(empty. After each stage, add: stage, fits, runtime, errors, key observations)
+
+| Stage | Fits | Runtime | Errors | Notes |
+|---|---|---|---|---|
+| MVP | | | | |
+| Stage 2 | | | | |
+| Full | | | | |
+
+## 6. Open items
+- Confirm measured runtime after MVP.
+- Custom seed count decision is resolved: field is a **count** (D-024); default = 3, max = 10; actual seeds = 0..count-1.
+
+## 7. Known issues
+(none)
+
+## 8. Session log
+
+| Date | Phase | What was done | Next step |
+|---|---|---|---|
+| 2026-10-04 | Planning | Research, design, project files, folder structure | Phase 0 |
+| 2026-10-04 | Planning | Execution plan reviewed and finalized; added D-020 to D-025 and locked sequential execution / single-process Full safeguards | Phase 0, Task 0.1 |
+| 2026-10-04 | Planning | Documentation consistency fix: updated 47 stale Architecture section references in execution_plan.md (sections renumbered after 4.2/4.3/4.6/5/6.6 were added); removed stale custom-seed open item from memory.md (already resolved as D-024); cross-document audit passed with no methodology changes; two stale references found in rules.md (lines 14 and 138) reported to user for decision | Phase 0, Task 0.1 |
