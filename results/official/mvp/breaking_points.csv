@@ -1,0 +1,21 @@
+dataset,model,combo,baseline_f1,threshold_f1,breaking_level,reached,noise_params,f1_at_bp,seeds_below_at_bp
+breast_cancer,decision_tree,gaussian,0.9210039479114093,0.8289035531202683,5,True,"{""gaussian_k"": 2.0}",0.7732050586611082,2
+breast_cancer,decision_tree,label,0.9210039479114093,0.8289035531202683,2,True,"{""label_flip_rate"": 0.1}",0.8156242814530325,2
+breast_cancer,decision_tree,label+gaussian,0.9210039479114093,0.8289035531202683,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0}",0.8228733307250368,2
+breast_cancer,decision_tree,missing,0.9210039479114093,0.8289035531202683,,False,,,
+breast_cancer,decision_tree,outliers,0.9210039479114093,0.8289035531202683,,False,,,
+breast_cancer,logreg,gaussian,0.9581174145455217,0.8623056730909695,,False,,,
+breast_cancer,logreg,label,0.9581174145455217,0.8623056730909695,5,True,"{""label_flip_rate"": 0.4}",0.7364418796260296,3
+breast_cancer,logreg,label+gaussian,0.9581174145455217,0.8623056730909695,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.7821171139727888,3
+breast_cancer,logreg,missing,0.9581174145455217,0.8623056730909695,,False,,,
+breast_cancer,logreg,outliers,0.9581174145455217,0.8623056730909695,,False,,,
+breast_cancer,random_forest,gaussian,0.9537481239667033,0.8583733115700329,4,True,"{""gaussian_k"": 1.5}",0.8576313191211392,1
+breast_cancer,random_forest,label,0.9537481239667033,0.8583733115700329,5,True,"{""label_flip_rate"": 0.4}",0.7183322198599352,3
+breast_cancer,random_forest,label+gaussian,0.9537481239667033,0.8583733115700329,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.6509328414443615,3
+breast_cancer,random_forest,missing,0.9537481239667033,0.8583733115700329,,False,,,
+breast_cancer,random_forest,outliers,0.9537481239667033,0.8583733115700329,,False,,,
+breast_cancer,svm_rbf,gaussian,0.962266683584426,0.8660400152259834,,False,,,
+breast_cancer,svm_rbf,label,0.962266683584426,0.8660400152259834,5,True,"{""label_flip_rate"": 0.4}",0.8485416603104136,2
+breast_cancer,svm_rbf,label+gaussian,0.962266683584426,0.8660400152259834,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.6703354045441837,3
+breast_cancer,svm_rbf,missing,0.962266683584426,0.8660400152259834,,False,,,
+breast_cancer,svm_rbf,outliers,0.962266683584426,0.8660400152259834,,False,,,

@@ -1,0 +1,9 @@
+dataset,model,scope,BPI,RS,rank
+breast_cancer,logreg,all,5.6,0.9638098106059876,1
+breast_cancer,svm_rbf,all,5.6,0.9596471277603107,2
+breast_cancer,random_forest,all,5.2,0.9470746118221901,3
+breast_cancer,decision_tree,all,4.4,0.9242810713206605,4
+breast_cancer,svm_rbf,singles,5.75,0.9727502804963384,1
+breast_cancer,logreg,singles,5.75,0.9717339540296301,2
+breast_cancer,random_forest,singles,5.25,0.9588758496000725,3
+breast_cancer,decision_tree,singles,4.75,0.9334051769611621,4
