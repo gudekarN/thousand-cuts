@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.engine.runner import build_plan, execute_plan
 from app.engine.analysis import write_all_outputs
+from app.engine.figures import generate_all_figures
 from app.core.config import STAGE_FULL
 from app.core.hashing import verify_frozen_hash
 from app.core.levels import load_levels, DEFAULT_LEVELS_PATH
@@ -93,7 +94,9 @@ def main():
 
     # --figures
     if args.figures:
-        print("NOTE: --figures not yet implemented (Task 5.4). Skipping.")
+        print(f"Generating figures for {out_dir}...")
+        generate_all_figures(out_dir)
+        print("Figures generated successfully.")
         return
 
     plan = build_plan(stage=STAGE_FULL)
