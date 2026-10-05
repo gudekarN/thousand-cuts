@@ -1,0 +1,123 @@
+{
+  "stage": "mvp",
+  "recommendation": "KEEP_A",
+  "tests": {
+    "T1": {
+      "name": "Rate accuracy",
+      "passed": true,
+      "details": "Rates within tolerances (check 4 PASS)"
+    },
+    "T2": {
+      "name": "Level 0 equals clean",
+      "passed": true,
+      "details": "Level-0 data equals clean (check 1 PASS)"
+    },
+    "T3": {
+      "name": "Numerical validity",
+      "passed": true,
+      "n_error_rows": 0,
+      "details": [
+        "No crashed fits, no NaN/inf metrics (312 ok rows)"
+      ]
+    },
+    "T4": {
+      "name": "Dead range",
+      "passed": true,
+      "n_breaking_pairs": 6,
+      "n_pairs_total": 16,
+      "breaking_pairs": [
+        {
+          "model": "decision_tree",
+          "noise": "label",
+          "breaking_level": 2,
+          "mean_f1": 0.8156,
+          "threshold": 0.8289
+        },
+        {
+          "model": "logreg",
+          "noise": "label",
+          "breaking_level": 5,
+          "mean_f1": 0.7364,
+          "threshold": 0.8623
+        },
+        {
+          "model": "random_forest",
+          "noise": "label",
+          "breaking_level": 5,
+          "mean_f1": 0.7183,
+          "threshold": 0.8584
+        },
+        {
+          "model": "svm_rbf",
+          "noise": "label",
+          "breaking_level": 5,
+          "mean_f1": 0.8485,
+          "threshold": 0.866
+        },
+        {
+          "model": "decision_tree",
+          "noise": "gaussian",
+          "breaking_level": 5,
+          "mean_f1": 0.7732,
+          "threshold": 0.8289
+        },
+        {
+          "model": "random_forest",
+          "noise": "gaussian",
+          "breaking_level": 4,
+          "mean_f1": 0.8576,
+          "threshold": 0.8584
+        }
+      ],
+      "details": "6/16 pairs have a breaking point"
+    },
+    "T5": {
+      "name": "Saturation",
+      "passed": true,
+      "n_break_at_level_1": 0,
+      "n_pairs_total": 16,
+      "saturation_pct": 0.0,
+      "saturated_pairs": [],
+      "details": "0/16 pairs (0.0%) already break at level 1 (threshold: <50%)"
+    },
+    "T6": {
+      "name": "Direction sanity",
+      "passed": true,
+      "by_noise": [
+        {
+          "noise": "label",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.721,
+          "direction_ok": true
+        },
+        {
+          "noise": "gaussian",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.8659,
+          "direction_ok": true
+        },
+        {
+          "noise": "outliers",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.9302,
+          "direction_ok": true
+        },
+        {
+          "noise": "missing",
+          "mean_f1_level0": 0.9488,
+          "mean_f1_level5": 0.9252,
+          "direction_ok": true
+        }
+      ],
+      "failures": [],
+      "details": "All noise types show non-increasing mean F1 L0\u2192L5"
+    }
+  },
+  "summary": {
+    "n_ok_rows": 312,
+    "n_error_rows": 0,
+    "n_breaking_pairs": 6,
+    "n_saturated_pairs": 0,
+    "saturation_pct": 0.0
+  }
+}

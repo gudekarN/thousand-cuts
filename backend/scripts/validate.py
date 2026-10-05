@@ -33,6 +33,13 @@ import numpy as np
 # Ensure backend dir is on path when run as a script
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# Reconfigure stdout/stderr to UTF-8 so Unicode characters (em-dash, arrows, etc.)
+# print correctly on Windows terminals regardless of the active code page.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 from app.engine.data import split
 from app.engine.noise import apply_noise, list_all_combos, clean_stats
 from app.engine.pipelines import build_pipeline
