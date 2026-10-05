@@ -4,11 +4,11 @@
 
 ## 1. Current state
 - Date created: 2026-10-04
-- Current phase: **Phase 4**
+- Current phase: **Phase 5**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
-- Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits)
-- Last completed task: Task 5.1 (run_full.py script)
-- Next task: Task 5.2 (Execute Full run)
+- Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits), Full complete (6,080 fits)
+- Last completed task: Task 5.2 (Execute Full run)
+- Next task: Task 5.3 (Full analysis outputs)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -62,7 +62,7 @@
 |---|---|---|---|---|
 | MVP | 312 | 22.2s | 0 | All 312 fits completed successfully (status: ok) |
 | Stage 2 | 1,824 | 215.3s | 0 | All 1,824 fits ok; 0 errors; all 15 combos across both datasets and 4 models completed |
-| Full | | | | |
+| Full | 6,080 | 703.8s | 0 | All 6,080 fits ok; 0 errors; 10 seeds (0..9), both datasets, all 4 models, all 15 combos |
 
 ## 6. Open items
 - Confirm measured runtime after MVP.
@@ -119,3 +119,4 @@
 | 2026-10-05 | Phase 4 | Executed Stage 2 run (1,824 fits, 1,824 ok, 0 errors, 215.3s runtime); generated raw_results.csv, manifest.json, and all 5 derived analysis CSVs | Task 4.4 |
 | 2026-10-05 | Phase 4 | Stage 2 validation report: all S1-S7 PASS; 6/16 breast_cancer and 6/16 digits single-noise pairs reach breaking point; Digits is not unusual (label and gaussian reach L2/L5; outliers very robust; decision_tree least robust on all datasets); validation_report.json committed | Gate 4 |
 | 2026-10-05 | Phase 5 | Created run_full.py (--dry-run, --analyze-only, --figures stub, --limit, --out, --levels-path, freeze guard, resume); 8 tests pass; 241 total passing | Task 5.2 |
+| 2026-10-05 | Phase 5 | Executed Full experiment run (6,080 fits, 6,080 ok, 0 errors, 703.8s runtime single-process); generated raw_results.csv, manifest.json, and all derived analysis CSVs | Task 5.3 |

@@ -1,0 +1,121 @@
+dataset,model,combo,baseline_f1,threshold_f1,breaking_level,reached,noise_params,f1_at_bp,seeds_below_at_bp
+breast_cancer,decision_tree,gaussian,0.9272203099947799,0.8344982789953019,5,True,"{""gaussian_k"": 2.0}",0.7777907162884861,7
+breast_cancer,decision_tree,gaussian+missing,0.9272203099947799,0.8344982789953019,5,True,"{""gaussian_k"": 2.0, ""missing_cell_rate"": 0.5}",0.7835620351093695,8
+breast_cancer,decision_tree,gaussian+outliers,0.9272203099947799,0.8344982789953019,,False,,,
+breast_cancer,decision_tree,gaussian+outliers+missing,0.9272203099947799,0.8344982789953019,5,True,"{""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.804921228084881,6
+breast_cancer,decision_tree,label,0.9272203099947799,0.8344982789953019,2,True,"{""label_flip_rate"": 0.1}",0.8293177285790779,5
+breast_cancer,decision_tree,label+gaussian,0.9272203099947799,0.8344982789953019,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5}",0.7071624756506711,9
+breast_cancer,decision_tree,label+gaussian+missing,0.9272203099947799,0.8344982789953019,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0, ""missing_cell_rate"": 0.3}",0.8016945589086371,9
+breast_cancer,decision_tree,label+gaussian+outliers,0.9272203099947799,0.8344982789953019,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15}",0.7004426878694111,8
+breast_cancer,decision_tree,label+gaussian+outliers+missing,0.9272203099947799,0.8344982789953019,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.7311638897492626,9
+breast_cancer,decision_tree,label+missing,0.9272203099947799,0.8344982789953019,2,True,"{""label_flip_rate"": 0.1, ""missing_cell_rate"": 0.2}",0.8277483844428307,4
+breast_cancer,decision_tree,label+outliers,0.9272203099947799,0.8344982789953019,3,True,"{""label_flip_rate"": 0.2, ""outlier_cell_rate"": 0.1}",0.7999641033196894,8
+breast_cancer,decision_tree,label+outliers+missing,0.9272203099947799,0.8344982789953019,3,True,"{""label_flip_rate"": 0.2, ""outlier_cell_rate"": 0.1, ""missing_cell_rate"": 0.3}",0.7795494433745566,8
+breast_cancer,decision_tree,missing,0.9272203099947799,0.8344982789953019,,False,,,
+breast_cancer,decision_tree,outliers,0.9272203099947799,0.8344982789953019,,False,,,
+breast_cancer,decision_tree,outliers+missing,0.9272203099947799,0.8344982789953019,,False,,,
+breast_cancer,logreg,gaussian,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,logreg,gaussian+missing,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,logreg,gaussian+outliers,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,logreg,gaussian+outliers+missing,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,logreg,label,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4}",0.7655751248837164,10
+breast_cancer,logreg,label+gaussian,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.8539669670298775,5
+breast_cancer,logreg,label+gaussian+missing,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""missing_cell_rate"": 0.5}",0.8698869816107602,4
+breast_cancer,logreg,label+gaussian+outliers,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2}",0.8214680673597682,5
+breast_cancer,logreg,label+gaussian+outliers+missing,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.8279153924021248,6
+breast_cancer,logreg,label+missing,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""missing_cell_rate"": 0.5}",0.8288852855949367,8
+breast_cancer,logreg,label+outliers,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2}",0.8003680418165502,7
+breast_cancer,logreg,label+outliers+missing,0.9699607458471874,0.8729646712624687,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.8209811668411572,6
+breast_cancer,logreg,missing,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,logreg,outliers,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,logreg,outliers+missing,0.9699607458471874,0.8729646712624687,,False,,,
+breast_cancer,random_forest,gaussian,0.9546650604745942,0.8591985544271348,5,True,"{""gaussian_k"": 2.0}",0.8440157714275577,7
+breast_cancer,random_forest,gaussian+missing,0.9546650604745942,0.8591985544271348,,False,,,
+breast_cancer,random_forest,gaussian+outliers,0.9546650604745942,0.8591985544271348,,False,,,
+breast_cancer,random_forest,gaussian+outliers+missing,0.9546650604745942,0.8591985544271348,,False,,,
+breast_cancer,random_forest,label,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4}",0.7391773575654774,10
+breast_cancer,random_forest,label+gaussian,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.739751935908009,8
+breast_cancer,random_forest,label+gaussian+missing,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""missing_cell_rate"": 0.5}",0.7880921562521578,9
+breast_cancer,random_forest,label+gaussian+outliers,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2}",0.7259863554711834,10
+breast_cancer,random_forest,label+gaussian+outliers+missing,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.7976056624053585,8
+breast_cancer,random_forest,label+missing,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""missing_cell_rate"": 0.5}",0.7432039180624305,10
+breast_cancer,random_forest,label+outliers,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2}",0.796751305461029,9
+breast_cancer,random_forest,label+outliers+missing,0.9546650604745942,0.8591985544271348,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.8488067728196504,5
+breast_cancer,random_forest,missing,0.9546650604745942,0.8591985544271348,,False,,,
+breast_cancer,random_forest,outliers,0.9546650604745942,0.8591985544271348,,False,,,
+breast_cancer,random_forest,outliers+missing,0.9546650604745942,0.8591985544271348,,False,,,
+breast_cancer,svm_rbf,gaussian,0.9668192353346547,0.8701373118011893,,False,,,
+breast_cancer,svm_rbf,gaussian+missing,0.9668192353346547,0.8701373118011893,,False,,,
+breast_cancer,svm_rbf,gaussian+outliers,0.9668192353346547,0.8701373118011893,,False,,,
+breast_cancer,svm_rbf,gaussian+outliers+missing,0.9668192353346547,0.8701373118011893,,False,,,
+breast_cancer,svm_rbf,label,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4}",0.8477218475883943,6
+breast_cancer,svm_rbf,label+gaussian,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.8017690046092765,7
+breast_cancer,svm_rbf,label+gaussian+missing,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""missing_cell_rate"": 0.5}",0.8530254198530297,4
+breast_cancer,svm_rbf,label+gaussian+outliers,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2}",0.7093570217925314,7
+breast_cancer,svm_rbf,label+gaussian+outliers+missing,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.8097516626037166,7
+breast_cancer,svm_rbf,label+missing,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""missing_cell_rate"": 0.5}",0.8021851108974426,9
+breast_cancer,svm_rbf,label+outliers,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2}",0.7611679986631092,8
+breast_cancer,svm_rbf,label+outliers+missing,0.9668192353346547,0.8701373118011893,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.836990733431519,5
+breast_cancer,svm_rbf,missing,0.9668192353346547,0.8701373118011893,,False,,,
+breast_cancer,svm_rbf,outliers,0.9668192353346547,0.8701373118011893,,False,,,
+breast_cancer,svm_rbf,outliers+missing,0.9668192353346547,0.8701373118011893,,False,,,
+digits,decision_tree,gaussian,0.8419763329975476,0.7577786996977929,3,True,"{""gaussian_k"": 1.0}",0.7245172505366407,9
+digits,decision_tree,gaussian+missing,0.8419763329975476,0.7577786996977929,3,True,"{""gaussian_k"": 1.0, ""missing_cell_rate"": 0.3}",0.6431944108332825,10
+digits,decision_tree,gaussian+outliers,0.8419763329975476,0.7577786996977929,3,True,"{""gaussian_k"": 1.0, ""outlier_cell_rate"": 0.1}",0.6888747112362177,10
+digits,decision_tree,gaussian+outliers+missing,0.8419763329975476,0.7577786996977929,2,True,"{""gaussian_k"": 0.5, ""outlier_cell_rate"": 0.05, ""missing_cell_rate"": 0.2}",0.736894790347135,9
+digits,decision_tree,label,0.8419763329975476,0.7577786996977929,2,True,"{""label_flip_rate"": 0.1}",0.7454216320939888,7
+digits,decision_tree,label+gaussian,0.8419763329975476,0.7577786996977929,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0}",0.6592258785682285,10
+digits,decision_tree,label+gaussian+missing,0.8419763329975476,0.7577786996977929,2,True,"{""label_flip_rate"": 0.1, ""gaussian_k"": 0.5, ""missing_cell_rate"": 0.2}",0.7325004237282651,7
+digits,decision_tree,label+gaussian+outliers,0.8419763329975476,0.7577786996977929,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0, ""outlier_cell_rate"": 0.1}",0.588104610349579,10
+digits,decision_tree,label+gaussian+outliers+missing,0.8419763329975476,0.7577786996977929,2,True,"{""label_flip_rate"": 0.1, ""gaussian_k"": 0.5, ""outlier_cell_rate"": 0.05, ""missing_cell_rate"": 0.2}",0.701760602442111,10
+digits,decision_tree,label+missing,0.8419763329975476,0.7577786996977929,2,True,"{""label_flip_rate"": 0.1, ""missing_cell_rate"": 0.2}",0.7218589681065831,10
+digits,decision_tree,label+outliers,0.8419763329975476,0.7577786996977929,3,True,"{""label_flip_rate"": 0.2, ""outlier_cell_rate"": 0.1}",0.7308359015802373,9
+digits,decision_tree,label+outliers+missing,0.8419763329975476,0.7577786996977929,2,True,"{""label_flip_rate"": 0.1, ""outlier_cell_rate"": 0.05, ""missing_cell_rate"": 0.2}",0.7353067821822659,9
+digits,decision_tree,missing,0.8419763329975476,0.7577786996977929,3,True,"{""missing_cell_rate"": 0.3}",0.7506356836469942,7
+digits,decision_tree,outliers,0.8419763329975476,0.7577786996977929,,False,,,
+digits,decision_tree,outliers+missing,0.8419763329975476,0.7577786996977929,3,True,"{""outlier_cell_rate"": 0.1, ""missing_cell_rate"": 0.3}",0.7232255530148674,10
+digits,logreg,gaussian,0.9696784893159294,0.8727106403843364,,False,,,
+digits,logreg,gaussian+missing,0.9696784893159294,0.8727106403843364,5,True,"{""gaussian_k"": 2.0, ""missing_cell_rate"": 0.5}",0.8722764760073236,5
+digits,logreg,gaussian+outliers,0.9696784893159294,0.8727106403843364,5,True,"{""gaussian_k"": 2.0, ""outlier_cell_rate"": 0.2}",0.8689176639125,7
+digits,logreg,gaussian+outliers+missing,0.9696784893159294,0.8727106403843364,4,True,"{""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8562780147717918,9
+digits,logreg,label,0.9696784893159294,0.8727106403843364,4,True,"{""label_flip_rate"": 0.3}",0.866739021583798,6
+digits,logreg,label+gaussian,0.9696784893159294,0.8727106403843364,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.8467524671817488,9
+digits,logreg,label+gaussian+missing,0.9696784893159294,0.8727106403843364,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""missing_cell_rate"": 0.4}",0.8587930637131155,8
+digits,logreg,label+gaussian+outliers,0.9696784893159294,0.8727106403843364,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15}",0.8359573192035873,10
+digits,logreg,label+gaussian+outliers+missing,0.9696784893159294,0.8727106403843364,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0, ""outlier_cell_rate"": 0.1, ""missing_cell_rate"": 0.3}",0.8724268450074739,7
+digits,logreg,label+missing,0.9696784893159294,0.8727106403843364,,False,,,
+digits,logreg,label+outliers,0.9696784893159294,0.8727106403843364,4,True,"{""label_flip_rate"": 0.3, ""outlier_cell_rate"": 0.15}",0.8532211870026799,9
+digits,logreg,label+outliers+missing,0.9696784893159294,0.8727106403843364,4,True,"{""label_flip_rate"": 0.3, ""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8136824633838998,10
+digits,logreg,missing,0.9696784893159294,0.8727106403843364,,False,,,
+digits,logreg,outliers,0.9696784893159294,0.8727106403843364,,False,,,
+digits,logreg,outliers+missing,0.9696784893159294,0.8727106403843364,4,True,"{""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8710651797233917,6
+digits,random_forest,gaussian,0.9747434680222519,0.8772691212200266,5,True,"{""gaussian_k"": 2.0}",0.8549735031313965,10
+digits,random_forest,gaussian+missing,0.9747434680222519,0.8772691212200266,4,True,"{""gaussian_k"": 1.5, ""missing_cell_rate"": 0.4}",0.8544967391110859,9
+digits,random_forest,gaussian+outliers,0.9747434680222519,0.8772691212200266,4,True,"{""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15}",0.8734087391696139,6
+digits,random_forest,gaussian+outliers+missing,0.9747434680222519,0.8772691212200266,4,True,"{""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8040401082833893,10
+digits,random_forest,label,0.9747434680222519,0.8772691212200266,,False,,,
+digits,random_forest,label+gaussian,0.9747434680222519,0.8772691212200266,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5}",0.8455484117121372,9
+digits,random_forest,label+gaussian+missing,0.9747434680222519,0.8772691212200266,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""missing_cell_rate"": 0.4}",0.7660684854681874,10
+digits,random_forest,label+gaussian+outliers,0.9747434680222519,0.8772691212200266,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15}",0.7982565459751929,10
+digits,random_forest,label+gaussian+outliers+missing,0.9747434680222519,0.8772691212200266,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0, ""outlier_cell_rate"": 0.1, ""missing_cell_rate"": 0.3}",0.8680443016581062,9
+digits,random_forest,label+missing,0.9747434680222519,0.8772691212200266,5,True,"{""label_flip_rate"": 0.4, ""missing_cell_rate"": 0.5}",0.8722635318323151,6
+digits,random_forest,label+outliers,0.9747434680222519,0.8772691212200266,,False,,,
+digits,random_forest,label+outliers+missing,0.9747434680222519,0.8772691212200266,5,True,"{""label_flip_rate"": 0.4, ""outlier_cell_rate"": 0.2, ""missing_cell_rate"": 0.5}",0.8168858596892085,10
+digits,random_forest,missing,0.9747434680222519,0.8772691212200266,,False,,,
+digits,random_forest,outliers,0.9747434680222519,0.8772691212200266,,False,,,
+digits,random_forest,outliers+missing,0.9747434680222519,0.8772691212200266,,False,,,
+digits,svm_rbf,gaussian,0.9812623108834918,0.8831360797951426,,False,,,
+digits,svm_rbf,gaussian+missing,0.9812623108834918,0.8831360797951426,5,True,"{""gaussian_k"": 2.0, ""missing_cell_rate"": 0.5}",0.8736311119655765,7
+digits,svm_rbf,gaussian+outliers,0.9812623108834918,0.8831360797951426,4,True,"{""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15}",0.8475321032678101,9
+digits,svm_rbf,gaussian+outliers+missing,0.9812623108834918,0.8831360797951426,4,True,"{""gaussian_k"": 1.5, ""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8409873101930918,10
+digits,svm_rbf,label,0.9812623108834918,0.8831360797951426,,False,,,
+digits,svm_rbf,label+gaussian,0.9812623108834918,0.8831360797951426,5,True,"{""label_flip_rate"": 0.4, ""gaussian_k"": 2.0}",0.8090491036669883,10
+digits,svm_rbf,label+gaussian+missing,0.9812623108834918,0.8831360797951426,4,True,"{""label_flip_rate"": 0.3, ""gaussian_k"": 1.5, ""missing_cell_rate"": 0.4}",0.8700320518372686,8
+digits,svm_rbf,label+gaussian+outliers,0.9812623108834918,0.8831360797951426,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0, ""outlier_cell_rate"": 0.1}",0.8801707514139527,5
+digits,svm_rbf,label+gaussian+outliers+missing,0.9812623108834918,0.8831360797951426,3,True,"{""label_flip_rate"": 0.2, ""gaussian_k"": 1.0, ""outlier_cell_rate"": 0.1, ""missing_cell_rate"": 0.3}",0.8831351239818295,5
+digits,svm_rbf,label+missing,0.9812623108834918,0.8831360797951426,5,True,"{""label_flip_rate"": 0.4, ""missing_cell_rate"": 0.5}",0.8774942051799496,6
+digits,svm_rbf,label+outliers,0.9812623108834918,0.8831360797951426,4,True,"{""label_flip_rate"": 0.3, ""outlier_cell_rate"": 0.15}",0.831648360853424,10
+digits,svm_rbf,label+outliers+missing,0.9812623108834918,0.8831360797951426,4,True,"{""label_flip_rate"": 0.3, ""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8265988815455947,10
+digits,svm_rbf,missing,0.9812623108834918,0.8831360797951426,,False,,,
+digits,svm_rbf,outliers,0.9812623108834918,0.8831360797951426,5,True,"{""outlier_cell_rate"": 0.2}",0.8649482938637261,9
+digits,svm_rbf,outliers+missing,0.9812623108834918,0.8831360797951426,4,True,"{""outlier_cell_rate"": 0.15, ""missing_cell_rate"": 0.4}",0.8811245209134345,7

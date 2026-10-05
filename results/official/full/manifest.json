@@ -1,0 +1,257 @@
+{
+  "run_id": "full-run",
+  "run_type": "official",
+  "stage": "full",
+  "created_utc": "2026-10-05T13:56:40.544724+00:00",
+  "finished_utc": "2026-10-05T14:08:23.330004+00:00",
+  "status": "completed",
+  "git_commit": "c96c3f78a8b2828322f718a1df5250ee7714edb3",
+  "requested_config": {
+    "stage": "full"
+  },
+  "python_version": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "package_versions": {
+    "annotated-types": "0.8.0",
+    "anyio": "4.15.1",
+    "certifi": "2026.7.22",
+    "click": "8.5.0",
+    "cloudpickle": "3.1.2",
+    "colorama": "0.4.6",
+    "contourpy": "1.3.3",
+    "cycler": "0.12.1",
+    "fastapi": "0.115.0",
+    "fonttools": "4.66.1",
+    "h11": "0.16.0",
+    "httpcore": "1.0.9",
+    "httptools": "0.8.0",
+    "httpx": "0.27.2",
+    "idna": "3.20",
+    "iniconfig": "2.3.0",
+    "joblib": "1.6.0",
+    "kiwisolver": "1.5.1",
+    "matplotlib": "3.9.2",
+    "numpy": "1.26.4",
+    "packaging": "26.3",
+    "pandas": "2.2.2",
+    "pillow": "12.3.0",
+    "pip": "24.0",
+    "pluggy": "1.6.0",
+    "pydantic": "2.9.2",
+    "pydantic_core": "2.23.4",
+    "pyparsing": "3.3.3",
+    "pytest": "8.3.3",
+    "python-dateutil": "2.9.0.post0",
+    "python-dotenv": "1.2.4",
+    "pytz": "2026.5",
+    "PyYAML": "6.0.3",
+    "scikit-learn": "1.5.2",
+    "scipy": "1.13.1",
+    "setuptools": "65.5.0",
+    "six": "1.17.0",
+    "sniffio": "1.3.1",
+    "starlette": "0.38.6",
+    "threadpoolctl": "3.7.0",
+    "typing_extensions": "4.16.0",
+    "tzdata": "2026.5",
+    "uvicorn": "0.30.6",
+    "watchfiles": "1.3.0",
+    "websockets": "17.2"
+  },
+  "config_hash": "bc936294060c9d60cc9127a37c6fda1969abe1f7004c343bee8fc4c265a83362",
+  "methodology_snapshot": {
+    "version": "1.0.0",
+    "test_size": 0.3,
+    "outlier_sigma": 5,
+    "break_ratio": 0.9,
+    "noise_order": [
+      "label",
+      "gaussian",
+      "outliers",
+      "missing"
+    ]
+  },
+  "levels_snapshot": {
+    "active_table": "A",
+    "values": {
+      "label_flip_rate": [
+        0,
+        0.05,
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "gaussian_k": [
+        0,
+        0.25,
+        0.5,
+        1.0,
+        1.5,
+        2.0
+      ],
+      "outlier_cell_rate": [
+        0,
+        0.02,
+        0.05,
+        0.1,
+        0.15,
+        0.2
+      ],
+      "missing_cell_rate": [
+        0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
+    },
+    "version": "1.0.0",
+    "frozen": true,
+    "frozen_at": "2026-10-05T12:16:09Z"
+  },
+  "datasets_meta": {
+    "breast_cancer": {
+      "n_samples": 569,
+      "n_features": 30,
+      "n_classes": 2
+    },
+    "digits": {
+      "n_samples": 1797,
+      "n_features": 64,
+      "n_classes": 10
+    }
+  },
+  "models": {
+    "logreg": {
+      "class_name": "LogisticRegression",
+      "params": {
+        "max_iter": 1000
+      },
+      "has_random_state": true
+    },
+    "svm_rbf": {
+      "class_name": "SVC",
+      "params": {
+        "kernel": "rbf",
+        "C": 1.0,
+        "gamma": "scale"
+      },
+      "has_random_state": false
+    },
+    "decision_tree": {
+      "class_name": "DecisionTreeClassifier",
+      "params": {},
+      "has_random_state": true
+    },
+    "random_forest": {
+      "class_name": "RandomForestClassifier",
+      "params": {
+        "n_estimators": 100,
+        "n_jobs": 1
+      },
+      "has_random_state": true
+    }
+  },
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "planned_fits": 6080,
+  "completed_fits": 6080,
+  "split_hashes": {
+    "breast_cancer": {
+      "0": {
+        "train": "aaf07a1b8cb018fd1847bb228888cc98aa1ccb631ffb7620a89c4fe7fff07628",
+        "test": "72706c44d49fa15bb97de988d575d9b6c5f37aee87e5dc0156a33f06fd618dd9"
+      },
+      "1": {
+        "train": "ddac4997241a8e91cadcc12191612c32a55788865b5cda3195c2e73a93540a6f",
+        "test": "f1c87b11727f4d5baa5ee955ddd7f8658d53ecf332b69a4f713bd695139f1b95"
+      },
+      "2": {
+        "train": "a6b68c5e648ce3cd26799b7e86200d6dc244109ab394c1b1cc0e0680e7b1cf9b",
+        "test": "cc618d89175f99595091f61bd0f628ab2b60e33836273c2cedd987063340b4d5"
+      },
+      "3": {
+        "train": "e651d1038f9d8359a8ba09d7e771cd0305776689d497afb57a17c8dd856f08f3",
+        "test": "e6853b7b346f472f252ecb6c79c70e749b9273b88c0779b384f9c5aeb69b2f31"
+      },
+      "4": {
+        "train": "cc35ea6e356172f73bd7b9be02becb8b42191b33bb728024c111870454c2203c",
+        "test": "51e2a9ef4618ddbbe4adbd64a7ddae83ebe5952a673888b0aa6b763e05babfea"
+      },
+      "5": {
+        "train": "f6bc4232dc73a3080072b1ae70d5b4ae3d327b389e4637a48a75b074c2697369",
+        "test": "a0d6da46434fae8228b2b1b103de430957fe7043a0261db6b3af902deda76bf7"
+      },
+      "6": {
+        "train": "fd97a7ea7459a28a676ade1685fc074caccc290cae31c74be9e3e8f79740dce4",
+        "test": "299f9e5256a5aac47ca339791bfd231b5254ab24a73514e10cfdf93cd619333d"
+      },
+      "7": {
+        "train": "9ccd355913b648f90cca56296131ab4356c5aa24ada00d0ef10cbf26b67a64a7",
+        "test": "c8f0fed9b09f319efc942e2c31b87ff23277274fc0a3425d32a4d9a30b3903cd"
+      },
+      "8": {
+        "train": "2117b7785e6b74c4b5128abc832d6a7a7e769a9ac71bdacfb0e3cb101c4db2f7",
+        "test": "12436d0cf46316db57cad60c05cb8a735fc66b8af90c266e72825c42a45cac02"
+      },
+      "9": {
+        "train": "bbecb6f0f98caba028d5ec483b8505bf17cb727ba6b88ce6a5aaedc7dfc98b8c",
+        "test": "02f54b411133d4a17e92a63252852df911a612bcb719a715d18a74b500187b60"
+      }
+    },
+    "digits": {
+      "0": {
+        "train": "b1d5a72304289ca6871293c272d47f44e954b1808142ce665ddf20cee75c0870",
+        "test": "e25705fe46e85216cd01fb88cac549c1524c5759f5772101aff051aabca2b9b4"
+      },
+      "1": {
+        "train": "a2982f2a48aa5a6556bcf629fdb9a80653e252f134d87c0990e86b5cac82d7ea",
+        "test": "f77d42120d332175a1f26f0fe3613d3ed8f55a5863a205dae43e3047ed54eb08"
+      },
+      "2": {
+        "train": "3adda05d9e98aa271f9cd39efa28b03153c612679afc82eff1880049eec6cdbc",
+        "test": "a2bfa60cc5a6649b162b172e5c2aeff6ff2059551c3ca0e991bc94f024e42cf4"
+      },
+      "3": {
+        "train": "5152df6c26b8b038e00bb4fcc62f2f45f844edd2496013adbfcd893df0c64176",
+        "test": "4a4bc114e1ebbfcf57377dd1a3030b4d15eec5dd914fca9cf1cf80771d67ade5"
+      },
+      "4": {
+        "train": "b37e74dea3483159b83a997796da557a54a66857744064c4c24b3c1117764d6d",
+        "test": "90840b952d9b6d56c2d2edb97d2f530c7b0831c7b042e63967c4bf003e991f24"
+      },
+      "5": {
+        "train": "f5f21a9d1536ca11dd7ea6b840594a46c89bf64f1f78f6c25d1df5f7948f5505",
+        "test": "d13e9405843a069c8842ceaa321d38655c951ceb5270334d9d700483d34bab32"
+      },
+      "6": {
+        "train": "c1368203938c5e152cf0031cbe59fc1b7b4ddab73d31b26ef21b0b8ec9dc27b4",
+        "test": "1a866340ed0284993059a37a0d652da5bda06189c82bfa18a4956269e39f03df"
+      },
+      "7": {
+        "train": "e20eb0a9f2bab63b619b0f0d97bd9e619e14232832ce17a93fd3909c9321b814",
+        "test": "2e42680b52e562b300ea89629feb8430b64c755d0238deff5c16116762ef017b"
+      },
+      "8": {
+        "train": "ac14d9124f9a4a9a73926b4a4600ed150b1b39b35cf6f05e83ad9e7d3738b9c2",
+        "test": "54f010498677cdf03c5203813c98467c184e99f5e0472f8b2c05e0a3feb4fc3e"
+      },
+      "9": {
+        "train": "74564efe91e691ecfa057690f727e663a17eacdeefa6b7cc2c4463d55e1df73d",
+        "test": "3c701745b5c2d5b5f0ac32d272e202ef3f17dc475bf3e16d2f5087a98eb230ad"
+      }
+    }
+  }
+}
