@@ -7,8 +7,8 @@
 - Current phase: **Phase 5**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
 - Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits), Full complete (6,080 fits)
-- Last completed task: Task 5.2 (Execute Full run)
-- Next task: Task 5.3 (Full analysis outputs)
+- Last completed task: Task 5.3 (Full analysis outputs)
+- Next task: Task 5.4 (Figures)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -120,3 +120,4 @@
 | 2026-10-05 | Phase 4 | Stage 2 validation report: all S1-S7 PASS; 6/16 breast_cancer and 6/16 digits single-noise pairs reach breaking point; Digits is not unusual (label and gaussian reach L2/L5; outliers very robust; decision_tree least robust on all datasets); validation_report.json committed | Gate 4 |
 | 2026-10-05 | Phase 5 | Created run_full.py (--dry-run, --analyze-only, --figures stub, --limit, --out, --levels-path, freeze guard, resume); 8 tests pass; 241 total passing | Task 5.2 |
 | 2026-10-05 | Phase 5 | Executed Full experiment run (6,080 fits, 6,080 ok, 0 errors, 703.8s runtime single-process); generated raw_results.csv, manifest.json, and all derived analysis CSVs | Task 5.3 |
+| 2026-10-05 | Phase 5 | Generated full analysis outputs. Verified row counts: baselines (8), breaking_points (120), synergy (440) | Task 5.4 |
