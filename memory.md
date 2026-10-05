@@ -4,11 +4,11 @@
 
 ## 1. Current state
 - Date created: 2026-10-04
-- Current phase: **Phase 5**
+- Current phase: **Phase 5 COMPLETE — awaiting APPROVED PHASE 5**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
-- Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits), Full complete (6,080 fits)
-- Last completed task: Task 5.4 (Figures)
-- Next task: Task 5.5 (Reproducibility check and lock)
+- Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits), Full complete (6,080 fits) — **LOCKED**
+- Last completed task: Task 5.5 (Reproducibility check and lock)
+- Next task: Phase 6 (FastAPI) — waiting for APPROVED PHASE 5
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -54,6 +54,14 @@
 - Frozen at: 2026-10-05T12:16:09Z
 - Reason: MVP calibration completed: T1-T6 passed and recommendation was KEEP_A. Table A severity levels are frozen for Stage 2 and Full execution.
 - Config hash: `bc936294060c9d60cc9127a37c6fda1969abe1f7004c343bee8fc4c265a83362`
+
+## 4b. Result lock record (Task 5.5)
+- Locked at: 2026-10-05
+- Reproducibility: 112 subset fits reproduced exactly (seeds 0 & 7, both datasets, 4 models, combos label/label+gaussian+missing/four-way, levels 0/3/5)
+- SHA-256 raw_results.csv: `181600cd2cc0fc5f9b4bccd3ffe4be30e1825ff00d21aa17da7a3e3cf8915a1a`
+- SHA-256 manifest.json:   `2663c4692170598534ffc449afc968fd638a8c564a059abac1da8c9280edd1d4`
+- manifest config_hash: matches frozen hash — PASS
+- **Official Full results are now final and immutable. Never regenerate, edit, or overwrite.**
 
 ## 5. Results snapshot
 (empty. After each stage, add: stage, fits, runtime, errors, key observations)
@@ -122,3 +130,4 @@
 | 2026-10-05 | Phase 5 | Executed Full experiment run (6,080 fits, 6,080 ok, 0 errors, 703.8s runtime single-process); generated raw_results.csv, manifest.json, and all derived analysis CSVs | Task 5.3 |
 | 2026-10-05 | Phase 5 | Generated full analysis outputs. Verified row counts: baselines (8), breaking_points (120), synergy (440) | Task 5.4 |
 | 2026-10-05 | Phase 5 | Implemented pure matplotlib figures generation, added --figures flag to run_full.py, and generated all charts in results/official/full/figures/ | Task 5.5 |
+| 2026-10-05 | Phase 5 | Reproducibility check: 112 subset fits reproduced exactly; manifest config_hash PASS; CHECKSUMS.txt written; Full results locked and immutable | Gate 5 |
