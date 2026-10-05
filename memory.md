@@ -5,10 +5,10 @@
 ## 1. Current state
 - Date created: 2026-10-04
 - Current phase: **Phase 1**
-- Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
-- Official results: none
-- Last completed task: Task 3.3 (Run calibration)
-- Next task: Task 3.6 (Execute freeze — requires user approval)
+- Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
+- Official results: MVP complete (312 fits)
+- Last completed task: Task 3.6 (Execute freeze)
+- Next task: Task 4.1 (Stage 2 script)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -50,10 +50,10 @@
 | 2026-10-05 | T1 PASS, T2 PASS, T3 PASS, T4 PASS (6/16 pairs break), T5 PASS (0/16 break at L1), T6 PASS | KEEP_A — no revision needed | pending user |
 
 ## 4. Freeze record
-- Frozen: no
-- Frozen at: n/a
-- Reason: n/a
-- Config hash: n/a
+- Frozen: **yes**
+- Frozen at: 2026-10-05T12:16:09Z
+- Reason: MVP calibration completed: T1-T6 passed and recommendation was KEEP_A. Table A severity levels are frozen for Stage 2 and Full execution.
+- Config hash: `bc936294060c9d60cc9127a37c6fda1969abe1f7004c343bee8fc4c265a83362`
 
 ## 5. Results snapshot
 (empty. After each stage, add: stage, fits, runtime, errors, key observations)
@@ -113,3 +113,4 @@
 | 2026-10-05 | Phase 3 | Implemented validate.py calibrate command (T1-T6, recommendations KEEP_A/REVISE_TO_S/REVISE_TO_M/FIX_CODE/ESCALATE_TO_USER); 10 tests; 204 total passing | Task 3.2 |
 | 2026-10-05 | Phase 3 | Implemented validate.py freeze command (preconditions, atomic write, FreezeRefused); 8 tests; levels.json NOT frozen; 212 total passing | Task 3.3 |
 | 2026-10-05 | Phase 3 | Ran calibration on MVP results: all T1-T6 PASS, recommendation=KEEP_A; calibration_report.json written; no revision needed; skip Tasks 3.4 and 3.5 | Task 3.6 |
+| 2026-10-05 | Phase 3 | Froze levels.json: frozen=true, config_hash=bc9362..., verify_frozen_hash PASS, tamper detection verified | Phase 4 |

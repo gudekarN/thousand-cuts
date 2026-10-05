@@ -1,29 +1,120 @@
 {
   "levels_version": "1.0.0",
   "active_table": "A",
-  "frozen": false,
-  "frozen_at": null,
-  "frozen_reason": null,
-  "config_hash": null,
-  "level_indices": [0, 1, 2, 3, 4, 5],
+  "frozen": true,
+  "frozen_at": "2026-10-05T12:16:09Z",
+  "frozen_reason": "MVP calibration completed: T1-T6 passed and recommendation was KEEP_A. Table A severity levels are frozen for Stage 2 and Full execution.",
+  "config_hash": "bc936294060c9d60cc9127a37c6fda1969abe1f7004c343bee8fc4c265a83362",
+  "level_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
   "tables": {
     "A": {
-      "label_flip_rate":   [0, 0.05, 0.10, 0.20, 0.30, 0.40],
-      "gaussian_k":        [0, 0.25, 0.5, 1.0, 1.5, 2.0],
-      "outlier_cell_rate": [0, 0.02, 0.05, 0.10, 0.15, 0.20],
-      "missing_cell_rate": [0, 0.10, 0.20, 0.30, 0.40, 0.50]
+      "label_flip_rate": [
+        0,
+        0.05,
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "gaussian_k": [
+        0,
+        0.25,
+        0.5,
+        1.0,
+        1.5,
+        2.0
+      ],
+      "outlier_cell_rate": [
+        0,
+        0.02,
+        0.05,
+        0.1,
+        0.15,
+        0.2
+      ],
+      "missing_cell_rate": [
+        0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
     },
     "S": {
-      "label_flip_rate":   [0, 0.10, 0.20, 0.30, 0.40, 0.45],
-      "gaussian_k":        [0, 0.5, 1.0, 2.0, 3.0, 4.0],
-      "outlier_cell_rate": [0, 0.05, 0.10, 0.20, 0.30, 0.40],
-      "missing_cell_rate": [0, 0.20, 0.40, 0.60, 0.70, 0.80]
+      "label_flip_rate": [
+        0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.45
+      ],
+      "gaussian_k": [
+        0,
+        0.5,
+        1.0,
+        2.0,
+        3.0,
+        4.0
+      ],
+      "outlier_cell_rate": [
+        0,
+        0.05,
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "missing_cell_rate": [
+        0,
+        0.2,
+        0.4,
+        0.6,
+        0.7,
+        0.8
+      ]
     },
     "M": {
-      "label_flip_rate":   [0, 0.02, 0.05, 0.10, 0.15, 0.20],
-      "gaussian_k":        [0, 0.1, 0.25, 0.5, 0.75, 1.0],
-      "outlier_cell_rate": [0, 0.01, 0.02, 0.05, 0.08, 0.10],
-      "missing_cell_rate": [0, 0.05, 0.10, 0.15, 0.20, 0.30]
+      "label_flip_rate": [
+        0,
+        0.02,
+        0.05,
+        0.1,
+        0.15,
+        0.2
+      ],
+      "gaussian_k": [
+        0,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
+        1.0
+      ],
+      "outlier_cell_rate": [
+        0,
+        0.01,
+        0.02,
+        0.05,
+        0.08,
+        0.1
+      ],
+      "missing_cell_rate": [
+        0,
+        0.05,
+        0.1,
+        0.15,
+        0.2,
+        0.3
+      ]
     }
   },
   "_notes": "Table A is the approved initial table. S (stronger) and M (milder) are predefined fallbacks, written before any result existed. See rules.md section 2. Never hand-edit values; only switch active_table via validate.py.",
