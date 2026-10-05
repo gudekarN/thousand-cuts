@@ -4,11 +4,11 @@
 
 ## 1. Current state
 - Date created: 2026-10-04
-- Current phase: **Phase 1**
+- Current phase: **Phase 4**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
-- Official results: MVP complete (312 fits)
-- Last completed task: Task 4.2 (Stage 2 validation checks)
-- Next task: Task 4.3 (Execute Stage 2)
+- Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits)
+- Last completed task: Task 4.3 (Execute Stage 2)
+- Next task: Task 4.4 (Stage 2 validation and report)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -61,7 +61,7 @@
 | Stage | Fits | Runtime | Errors | Notes |
 |---|---|---|---|---|
 | MVP | 312 | 22.2s | 0 | All 312 fits completed successfully (status: ok) |
-| Stage 2 | | | | |
+| Stage 2 | 1,824 | 215.3s | 0 | All 1,824 fits ok; 0 errors; all 15 combos across both datasets and 4 models completed |
 | Full | | | | |
 
 ## 6. Open items
@@ -116,3 +116,4 @@
 | 2026-10-05 | Phase 3 | Froze levels.json: frozen=true, config_hash=bc9362..., verify_frozen_hash PASS, tamper detection verified | Phase 4 |
 | 2026-10-05 | Phase 4 | Created run_stage2.py with freeze guard and limit validations; 1824 fits verified via dry-run; 5 tests pass | Task 4.1 |
 | 2026-10-05 | Phase 4 | Added Stage 2 checks S1-S7 to validate.py; fixed freeze test isolation and structure test; 16 new tests; 233 total passing | Task 4.3 |
+| 2026-10-05 | Phase 4 | Executed Stage 2 run (1,824 fits, 1,824 ok, 0 errors, 215.3s runtime); generated raw_results.csv, manifest.json, and all 5 derived analysis CSVs | Task 4.4 |

@@ -1,0 +1,17 @@
+dataset,model,scope,BPI,RS,rank
+breast_cancer,logreg,all,5.533333333333333,0.9592060515532593,1
+breast_cancer,svm_rbf,all,5.4,0.9512986019930884,2
+breast_cancer,random_forest,all,5.133333333333334,0.9433413972985772,3
+breast_cancer,decision_tree,all,4.2,0.8942446243653086,4
+breast_cancer,svm_rbf,singles,5.75,0.9727502804963384,1
+breast_cancer,logreg,singles,5.75,0.9717339540296301,2
+breast_cancer,random_forest,singles,5.25,0.9588758496000725,3
+breast_cancer,decision_tree,singles,4.75,0.9334051769611621,4
+digits,logreg,all,5.066666666666666,0.931624337971447,1
+digits,random_forest,all,4.866666666666666,0.926193571766005,2
+digits,svm_rbf,all,4.666666666666667,0.9221998336395371,3
+digits,decision_tree,all,2.8,0.7458525245801101,4
+digits,random_forest,singles,5.75,0.98023339513806,1
+digits,svm_rbf,singles,5.75,0.9646696803856718,2
+digits,logreg,singles,5.75,0.9571980010920342,3
+digits,decision_tree,singles,3.75,0.8629050938413666,4

@@ -1,0 +1,194 @@
+{
+  "run_id": "stage2-run",
+  "run_type": "official",
+  "stage": "stage2",
+  "created_utc": "2026-10-05T13:35:49.208240+00:00",
+  "finished_utc": "2026-10-05T13:39:23.402275+00:00",
+  "status": "completed",
+  "git_commit": "e3e4d4bc4c15e177864cd4b671202ac7aeae04a2",
+  "requested_config": {
+    "stage": "stage2"
+  },
+  "python_version": "3.11.9",
+  "platform": "Windows-10-10.0.26200-SP0",
+  "package_versions": {
+    "annotated-types": "0.8.0",
+    "anyio": "4.15.1",
+    "certifi": "2026.7.22",
+    "click": "8.5.0",
+    "cloudpickle": "3.1.2",
+    "colorama": "0.4.6",
+    "contourpy": "1.3.3",
+    "cycler": "0.12.1",
+    "fastapi": "0.115.0",
+    "fonttools": "4.66.1",
+    "h11": "0.16.0",
+    "httpcore": "1.0.9",
+    "httptools": "0.8.0",
+    "httpx": "0.27.2",
+    "idna": "3.20",
+    "iniconfig": "2.3.0",
+    "joblib": "1.6.0",
+    "kiwisolver": "1.5.1",
+    "matplotlib": "3.9.2",
+    "numpy": "1.26.4",
+    "packaging": "26.3",
+    "pandas": "2.2.2",
+    "pillow": "12.3.0",
+    "pip": "24.0",
+    "pluggy": "1.6.0",
+    "pydantic": "2.9.2",
+    "pydantic_core": "2.23.4",
+    "pyparsing": "3.3.3",
+    "pytest": "8.3.3",
+    "python-dateutil": "2.9.0.post0",
+    "python-dotenv": "1.2.4",
+    "pytz": "2026.5",
+    "PyYAML": "6.0.3",
+    "scikit-learn": "1.5.2",
+    "scipy": "1.13.1",
+    "setuptools": "65.5.0",
+    "six": "1.17.0",
+    "sniffio": "1.3.1",
+    "starlette": "0.38.6",
+    "threadpoolctl": "3.7.0",
+    "typing_extensions": "4.16.0",
+    "tzdata": "2026.5",
+    "uvicorn": "0.30.6",
+    "watchfiles": "1.3.0",
+    "websockets": "17.2"
+  },
+  "config_hash": "bc936294060c9d60cc9127a37c6fda1969abe1f7004c343bee8fc4c265a83362",
+  "methodology_snapshot": {
+    "version": "1.0.0",
+    "test_size": 0.3,
+    "outlier_sigma": 5,
+    "break_ratio": 0.9,
+    "noise_order": [
+      "label",
+      "gaussian",
+      "outliers",
+      "missing"
+    ]
+  },
+  "levels_snapshot": {
+    "active_table": "A",
+    "values": {
+      "label_flip_rate": [
+        0,
+        0.05,
+        0.1,
+        0.2,
+        0.3,
+        0.4
+      ],
+      "gaussian_k": [
+        0,
+        0.25,
+        0.5,
+        1.0,
+        1.5,
+        2.0
+      ],
+      "outlier_cell_rate": [
+        0,
+        0.02,
+        0.05,
+        0.1,
+        0.15,
+        0.2
+      ],
+      "missing_cell_rate": [
+        0,
+        0.1,
+        0.2,
+        0.3,
+        0.4,
+        0.5
+      ]
+    },
+    "version": "1.0.0",
+    "frozen": true,
+    "frozen_at": "2026-10-05T12:16:09Z"
+  },
+  "datasets_meta": {
+    "breast_cancer": {
+      "n_samples": 569,
+      "n_features": 30,
+      "n_classes": 2
+    },
+    "digits": {
+      "n_samples": 1797,
+      "n_features": 64,
+      "n_classes": 10
+    }
+  },
+  "models": {
+    "logreg": {
+      "class_name": "LogisticRegression",
+      "params": {
+        "max_iter": 1000
+      },
+      "has_random_state": true
+    },
+    "svm_rbf": {
+      "class_name": "SVC",
+      "params": {
+        "kernel": "rbf",
+        "C": 1.0,
+        "gamma": "scale"
+      },
+      "has_random_state": false
+    },
+    "decision_tree": {
+      "class_name": "DecisionTreeClassifier",
+      "params": {},
+      "has_random_state": true
+    },
+    "random_forest": {
+      "class_name": "RandomForestClassifier",
+      "params": {
+        "n_estimators": 100,
+        "n_jobs": 1
+      },
+      "has_random_state": true
+    }
+  },
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "planned_fits": 1824,
+  "completed_fits": 1824,
+  "split_hashes": {
+    "breast_cancer": {
+      "0": {
+        "train": "aaf07a1b8cb018fd1847bb228888cc98aa1ccb631ffb7620a89c4fe7fff07628",
+        "test": "72706c44d49fa15bb97de988d575d9b6c5f37aee87e5dc0156a33f06fd618dd9"
+      },
+      "1": {
+        "train": "ddac4997241a8e91cadcc12191612c32a55788865b5cda3195c2e73a93540a6f",
+        "test": "f1c87b11727f4d5baa5ee955ddd7f8658d53ecf332b69a4f713bd695139f1b95"
+      },
+      "2": {
+        "train": "a6b68c5e648ce3cd26799b7e86200d6dc244109ab394c1b1cc0e0680e7b1cf9b",
+        "test": "cc618d89175f99595091f61bd0f628ab2b60e33836273c2cedd987063340b4d5"
+      }
+    },
+    "digits": {
+      "0": {
+        "train": "b1d5a72304289ca6871293c272d47f44e954b1808142ce665ddf20cee75c0870",
+        "test": "e25705fe46e85216cd01fb88cac549c1524c5759f5772101aff051aabca2b9b4"
+      },
+      "1": {
+        "train": "a2982f2a48aa5a6556bcf629fdb9a80653e252f134d87c0990e86b5cac82d7ea",
+        "test": "f77d42120d332175a1f26f0fe3613d3ed8f55a5863a205dae43e3047ed54eb08"
+      },
+      "2": {
+        "train": "3adda05d9e98aa271f9cd39efa28b03153c612679afc82eff1880049eec6cdbc",
+        "test": "a2bfa60cc5a6649b162b172e5c2aeff6ff2059551c3ca0e991bc94f024e42cf4"
+      }
+    }
+  }
+}
