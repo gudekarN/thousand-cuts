@@ -1,8 +1,9 @@
 """Validation script for the Thousand Cuts experiment.
 
 Subcommands:
-    checks --stage mvp   Run validation checks against experiment results.
-    freeze               Freeze levels (not yet implemented here).
+    checks   --stage mvp   Run the 7 validation checks.
+    calibrate --stage mvp  Evaluate T1-T6 calibration tests and write report.
+    freeze                 Freeze levels (Task 3.2).
 
 Checks 1-4 (Task 2.2):
     1. Level-0 equals clean: apply_noise at level 0 returns data identical to clean.
@@ -10,6 +11,14 @@ Checks 1-4 (Task 2.2):
     2. Test set unchanged: hash X_test and y_test before and after noise + fit.
     3. Imputer/scaler statistics come from noisy train only.
     4. Noise rates match the active level table within tolerances.
+
+Calibration tests T1-T6 (Task 3.1, rules.md section 2.2):
+    T1 Rate accuracy   — noise rates within tolerances.
+    T2 Level 0         — level-0 equals clean baseline.
+    T3 Numerical valid — no crashed fits, no NaN/inf metrics.
+    T4 Dead range      — >= 1 of 16 single-noise pairs has a breaking point.
+    T5 Saturation      — < 50% of 16 pairs already break at level 1.
+    T6 Direction sanity— mean F1 at level 5 <= level 0 for each noise type.
 """
 
 import argparse
@@ -734,6 +743,271 @@ def check_runtime(mvp_csv_path=None, probe_dataset="digits"):
 
 
 # ---------------------------------------------------------------------------
+# Calibration: T1-T6  (rules.md section 2.2)
+# ---------------------------------------------------------------------------
+
+_SINGLE_NOISES = ["label", "gaussian", "outliers", "missing"]
+_N_SINGLE_NOISE_PAIRS = 16  # 4 models x 4 single noises
+
+
+def run_calibration(stage: str, out_dir: Path) -> dict:
+    """Evaluate T1-T6 calibration tests on results from *stage*.
+
+    Reads:
+      - <out_dir>/raw_results.csv
+      - <out_dir>/validation_report.json  (for T1, T2, T3)
+
+    Writes:
+      - <out_dir>/calibration_report.json  (READ-ONLY for levels.json)
+
+    Returns the full calibration report dict.
+    """
+    import pandas as pd
+
+    raw_csv = out_dir / "raw_results.csv"
+    val_report_path = out_dir / "validation_report.json"
+
+    # ── Load data ────────────────────────────────────────────────────────────
+    if not raw_csv.exists():
+        raise FileNotFoundError(f"raw_results.csv not found in {out_dir}")
+
+    df = pd.read_csv(raw_csv)
+    df_ok = df[df["status"] == "ok"]
+
+    val_report = None
+    if val_report_path.exists():
+        val_report = json.loads(val_report_path.read_text(encoding="utf-8"))
+
+    def _check_result(check_num: int) -> bool:
+        """Return True (passed) for a check from the validation report."""
+        if val_report is None:
+            return False
+        for c in val_report.get("checks", []):
+            if c["check"] == check_num:
+                return bool(c["passed"])
+        return False
+
+    tests = {}
+
+    # ── T1: Rate accuracy (reuse Check 4 result) ─────────────────────────────
+    t1_passed = _check_result(4)
+    tests["T1"] = {
+        "name": "Rate accuracy",
+        "passed": t1_passed,
+        "details": (
+            "Rates within tolerances (check 4 PASS)"
+            if t1_passed
+            else "Rate check 4 FAILED — implementation bug"
+        ),
+    }
+
+    # ── T2: Level 0 equals clean (reuse Check 1 result) ──────────────────────
+    t2_passed = _check_result(1)
+    tests["T2"] = {
+        "name": "Level 0 equals clean",
+        "passed": t2_passed,
+        "details": (
+            "Level-0 data equals clean (check 1 PASS)"
+            if t2_passed
+            else "Level-0 check 1 FAILED — implementation bug"
+        ),
+    }
+
+    # ── T3: Numerical validity ────────────────────────────────────────────────
+    # No crashed fits, no NaN/inf metrics, no inf in noisy training data.
+    # We inspect the raw CSV directly for this.
+    t3_failures = []
+
+    n_error = int((df["status"] == "error").sum())
+    if n_error > 0:
+        t3_failures.append(f"{n_error} crashed (error) fit(s) found")
+
+    for metric in ["macro_f1", "accuracy"]:
+        if metric not in df_ok.columns:
+            continue
+        n_nan = int(df_ok[metric].isna().sum())
+        n_inf = int(np.isinf(df_ok[metric]).sum())
+        if n_nan:
+            t3_failures.append(f"{n_nan} NaN value(s) in {metric}")
+        if n_inf:
+            t3_failures.append(f"{n_inf} inf value(s) in {metric}")
+
+    t3_passed = len(t3_failures) == 0
+    tests["T3"] = {
+        "name": "Numerical validity",
+        "passed": t3_passed,
+        "n_error_rows": n_error,
+        "details": t3_failures if t3_failures else [
+            f"No crashed fits, no NaN/inf metrics ({len(df_ok)} ok rows)"
+        ],
+    }
+
+    # ── T4: Dead range — at least 1 of 16 (model, noise) pairs breaks ────────
+    clean_rows = df_ok[df_ok["combo"] == "clean"]
+    baselines = clean_rows.groupby("model")["macro_f1"].mean()  # Series[model -> f1]
+
+    n_breaking = 0
+    breaking_pairs = []
+    saturated_pairs = []  # pairs that break at level 1
+
+    for noise in _SINGLE_NOISES:
+        noise_df = df_ok[df_ok["combo"] == noise]
+        for model, baseline_f1 in baselines.items():
+            threshold = 0.90 * float(baseline_f1)
+            model_df = noise_df[noise_df["model"] == model]
+            broke = False
+            broke_at_1 = False
+            for level in [1, 2, 3, 4, 5]:
+                ldf = model_df[model_df["level"] == level]
+                if ldf.empty:
+                    continue
+                mean_f1 = float(ldf["macro_f1"].mean())
+                if mean_f1 <= threshold + 1e-12:
+                    if not broke:
+                        n_breaking += 1
+                        breaking_pairs.append(
+                            {"model": model, "noise": noise, "breaking_level": level,
+                             "mean_f1": round(mean_f1, 4), "threshold": round(threshold, 4)}
+                        )
+                        broke = True
+                        if level == 1:
+                            broke_at_1 = True
+                    break
+            if broke_at_1:
+                saturated_pairs.append({"model": model, "noise": noise})
+
+    t4_passed = n_breaking >= 1
+    tests["T4"] = {
+        "name": "Dead range",
+        "passed": t4_passed,
+        "n_breaking_pairs": n_breaking,
+        "n_pairs_total": _N_SINGLE_NOISE_PAIRS,
+        "breaking_pairs": breaking_pairs,
+        "details": (
+            f"{n_breaking}/{_N_SINGLE_NOISE_PAIRS} pairs have a breaking point"
+        ),
+    }
+
+    # ── T5: Saturation — fewer than 50% already break at level 1 ─────────────
+    n_saturated = len(saturated_pairs)
+    saturation_pct = 100.0 * n_saturated / _N_SINGLE_NOISE_PAIRS
+    t5_passed = n_saturated < _N_SINGLE_NOISE_PAIRS / 2
+    tests["T5"] = {
+        "name": "Saturation",
+        "passed": t5_passed,
+        "n_break_at_level_1": n_saturated,
+        "n_pairs_total": _N_SINGLE_NOISE_PAIRS,
+        "saturation_pct": round(saturation_pct, 1),
+        "saturated_pairs": saturated_pairs,
+        "details": (
+            f"{n_saturated}/{_N_SINGLE_NOISE_PAIRS} pairs ({saturation_pct:.1f}%) "
+            f"already break at level 1 (threshold: <50%)"
+        ),
+    }
+
+    # ── T6: Direction sanity — mean F1 at L5 <= L0 for each noise type ────────
+    t6_failures = []
+    t6_rows = []
+    baseline_mean = float(baselines.mean())
+
+    for noise in _SINGLE_NOISES:
+        noise_df = df_ok[df_ok["combo"] == noise]
+        if noise_df.empty:
+            t6_failures.append(f"{noise}: no rows")
+            continue
+        level_mean = noise_df.groupby("level")["macro_f1"].mean()
+        f1_at_5 = float(level_mean.get(5, float("nan")))
+        # Use per-noise baseline (same clean baseline for all)
+        direction_ok = f1_at_5 <= baseline_mean + 1e-9
+        t6_rows.append(
+            {"noise": noise, "mean_f1_level0": round(baseline_mean, 4),
+             "mean_f1_level5": round(f1_at_5, 4), "direction_ok": direction_ok}
+        )
+        if not direction_ok:
+            t6_failures.append(
+                f"{noise}: mean F1 at L5 ({f1_at_5:.4f}) > L0 ({baseline_mean:.4f})"
+            )
+
+    t6_passed = len(t6_failures) == 0
+    tests["T6"] = {
+        "name": "Direction sanity",
+        "passed": t6_passed,
+        "by_noise": t6_rows,
+        "failures": t6_failures,
+        "details": (
+            "All noise types show non-increasing mean F1 L0→L5"
+            if t6_passed
+            else f"{len(t6_failures)} noise type(s) violate direction sanity"
+        ),
+    }
+
+    # ── Recommendation logic ──────────────────────────────────────────────────
+    bug_tests_fail = not (t1_passed and t2_passed and t3_passed and t6_passed)
+    t4_fail = not t4_passed
+    t5_fail = not t5_passed
+
+    if bug_tests_fail and not (t4_fail or t5_fail):
+        recommendation = "FIX_CODE"
+    elif bug_tests_fail and (t4_fail or t5_fail):
+        # Both bug-type and scale-type failures — unclear
+        recommendation = "ESCALATE_TO_USER"
+    elif t4_fail and t5_fail:
+        recommendation = "ESCALATE_TO_USER"
+    elif t4_fail:
+        recommendation = "REVISE_TO_S"
+    elif t5_fail:
+        recommendation = "REVISE_TO_M"
+    else:
+        recommendation = "KEEP_A"
+
+    # ── Print table ───────────────────────────────────────────────────────────
+    print("\nCalibration report")
+    print(f"  Stage: {stage}")
+    print(f"  Raw results: {raw_csv}")
+    print()
+    print(f"  {'Test':<6} {'Name':<28} {'Pass?':<8} Details")
+    print(f"  {'-'*6} {'-'*28} {'-'*8} {'-'*45}")
+    for key, t in tests.items():
+        status = "PASS" if t["passed"] else "FAIL"
+        detail = t.get("details", "")
+        if isinstance(detail, list):
+            detail = detail[0] if detail else ""
+        print(f"  {key:<6} {t['name']:<28} {status:<8} {str(detail)[:60]}")
+    print()
+    print(f"  Recommendation: {recommendation}")
+    print()
+    if recommendation == "KEEP_A":
+        print("  All tests pass. Table A is technically usable. Proceed to freeze.")
+    elif recommendation == "REVISE_TO_S":
+        print("  T4 failed (dead range). No breaking points found. Switch to table S (stronger).")
+    elif recommendation == "REVISE_TO_M":
+        print("  T5 failed (saturation). >50% of pairs already break at level 1. Switch to table M (milder).")
+    elif recommendation == "FIX_CODE":
+        print("  T1/T2/T3/T6 failure indicates an implementation bug. Fix code; do not change levels.")
+    else:
+        print("  Conflicting or unclear failures. Stop and discuss with the user.")
+
+    # ── Write report (READ-ONLY for levels.json) ──────────────────────────────
+    report = {
+        "stage": stage,
+        "recommendation": recommendation,
+        "tests": tests,
+        "summary": {
+            "n_ok_rows": len(df_ok),
+            "n_error_rows": n_error,
+            "n_breaking_pairs": n_breaking,
+            "n_saturated_pairs": n_saturated,
+            "saturation_pct": round(saturation_pct, 1),
+        },
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / "calibration_report.json"
+    write_json_atomic(report_path, report)
+    print(f"  Report written to: {report_path}")
+    return report
+
+
+# ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
 
@@ -792,6 +1066,11 @@ def main():
     checks_parser.add_argument("--out", type=str, default=None,
                                help="Output directory (default: results/official/<stage>)")
 
+    calib_parser = subparsers.add_parser("calibrate", help="Run calibration tests T1-T6")
+    calib_parser.add_argument("--stage", required=True, choices=["mvp", "stage2", "full"])
+    calib_parser.add_argument("--out", type=str, default=None,
+                              help="Output directory (default: results/official/<stage>)")
+
     args = parser.parse_args()
 
     if args.command == "checks":
@@ -809,6 +1088,15 @@ def main():
 
         if not report["all_passed"]:
             sys.exit(1)
+
+    elif args.command == "calibrate":
+        if args.out:
+            out_dir = Path(args.out)
+        else:
+            out_dir = official_dir(args.stage)
+
+        run_calibration(args.stage, out_dir)
+
     else:
         parser.print_help()
         sys.exit(1)
