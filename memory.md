@@ -4,11 +4,11 @@
 
 ## 1. Current state
 - Date created: 2026-10-04
-- Current phase: **Phase 5 COMPLETE — awaiting APPROVED PHASE 5**
+- Current phase: **Phase 6**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
-- Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits), Full complete (6,080 fits) — **LOCKED**
-- Last completed task: Task 5.5 (Reproducibility check and lock)
-- Next task: Phase 6 (FastAPI) — waiting for APPROVED PHASE 5
+- Official results: MVP, Stage 2, Full complete — **LOCKED**
+- Last completed task: Task 6.1 (FastAPI foundation)
+- Next task: Task 6.2 (Results read layer)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -131,3 +131,4 @@
 | 2026-10-05 | Phase 5 | Generated full analysis outputs. Verified row counts: baselines (8), breaking_points (120), synergy (440) | Task 5.4 |
 | 2026-10-05 | Phase 5 | Implemented pure matplotlib figures generation, added --figures flag to run_full.py, and generated all charts in results/official/full/figures/ | Task 5.5 |
 | 2026-10-05 | Phase 5 | Reproducibility check: 112 subset fits reproduced exactly; manifest config_hash PASS; CHECKSUMS.txt written; Full results locked and immutable | Gate 5 |
+| 2026-10-05 | Phase 6 | FastAPI foundation: app/main.py, health, config, errors, CORS, schemas; 10 new tests; 252 total passing; uvicorn starts on port 8000 | Task 6.2 |
