@@ -1,0 +1,102 @@
+{
+  "stage": "stage2",
+  "checks": [
+    {
+      "check": "S1",
+      "name": "both_datasets_checks_2_3_5",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "  breast_cancer: test-set hash check over 3 seeds done",
+        "  breast_cancer: imputer fit verified on noisy train for combo=label",
+        "  breast_cancer: reproducibility check done (6 rows)",
+        "  digits: test-set hash check over 3 seeds done",
+        "  digits: imputer fit verified on noisy train for combo=label",
+        "  digits: reproducibility check done (6 rows)"
+      ]
+    },
+    {
+      "check": "S2",
+      "name": "digits_10_classes",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "  Digits seed=0: 10 classes in y_test \u2014 OK",
+        "  Digits seed=1: 10 classes in y_test \u2014 OK",
+        "  Digits seed=2: 10 classes in y_test \u2014 OK"
+      ]
+    },
+    {
+      "check": "S3",
+      "name": "digits_zero_std_unchanged",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "  Digits: 4 zero-std columns found",
+        "  Digits: zero-std cols unchanged by 'gaussian' L3 \u2014 OK",
+        "  Digits: zero-std cols unchanged by 'gaussian' L5 \u2014 OK",
+        "  Digits: zero-std cols unchanged by 'outliers' L3 \u2014 OK",
+        "  Digits: zero-std cols unchanged by 'outliers' L5 \u2014 OK"
+      ]
+    },
+    {
+      "check": "S4",
+      "name": "completeness",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "ok rows: 1824",
+        "duplicate rows: 0",
+        "All (dataset, model, seed, combo, level) keys present exactly once"
+      ]
+    },
+    {
+      "check": "S5",
+      "name": "zero_errors",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "error rows: 0"
+      ]
+    },
+    {
+      "check": "S6",
+      "name": "compound_order",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "  'label+gaussian': order OK ['label', 'gaussian']",
+        "  'label+outliers': order OK ['label', 'outliers']",
+        "  'label+missing': order OK ['label', 'missing']",
+        "  'gaussian+outliers': order OK ['gaussian', 'outliers']",
+        "  'gaussian+missing': order OK ['gaussian', 'missing']",
+        "  'outliers+missing': order OK ['outliers', 'missing']",
+        "  'label+gaussian+outliers': order OK ['label', 'gaussian', 'outliers']",
+        "  'label+gaussian+missing': order OK ['label', 'gaussian', 'missing']",
+        "  'label+outliers+missing': order OK ['label', 'outliers', 'missing']",
+        "  'gaussian+outliers+missing': order OK ['gaussian', 'outliers', 'missing']",
+        "  'label+gaussian+outliers+missing': order OK ['label', 'gaussian', 'outliers', 'missing']"
+      ]
+    },
+    {
+      "check": "S7",
+      "name": "synergy_components",
+      "passed": true,
+      "failures": [],
+      "details": [
+        "  'label+gaussian': all 2 components present",
+        "  'label+outliers': all 2 components present",
+        "  'label+missing': all 2 components present",
+        "  'gaussian+outliers': all 2 components present",
+        "  'gaussian+missing': all 2 components present",
+        "  'outliers+missing': all 2 components present",
+        "  'label+gaussian+outliers': all 3 components present",
+        "  'label+gaussian+missing': all 3 components present",
+        "  'label+outliers+missing': all 3 components present",
+        "  'gaussian+outliers+missing': all 3 components present",
+        "  'label+gaussian+outliers+missing': all 4 components present"
+      ]
+    }
+  ],
+  "all_passed": true
+}
