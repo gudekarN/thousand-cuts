@@ -7,8 +7,8 @@
 - Current phase: **Phase 4**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
 - Official results: MVP complete (312 fits), Stage 2 complete (1,824 fits)
-- Last completed task: Task 4.4 (Stage 2 validation report)
-- Next task: Task 4.4 COMPLETE — Gate 4 (APPROVED PHASE 4 required before Phase 5)
+- Last completed task: Task 5.1 (run_full.py script)
+- Next task: Task 5.2 (Execute Full run)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -118,3 +118,4 @@
 | 2026-10-05 | Phase 4 | Added Stage 2 checks S1-S7 to validate.py; fixed freeze test isolation and structure test; 16 new tests; 233 total passing | Task 4.3 |
 | 2026-10-05 | Phase 4 | Executed Stage 2 run (1,824 fits, 1,824 ok, 0 errors, 215.3s runtime); generated raw_results.csv, manifest.json, and all 5 derived analysis CSVs | Task 4.4 |
 | 2026-10-05 | Phase 4 | Stage 2 validation report: all S1-S7 PASS; 6/16 breast_cancer and 6/16 digits single-noise pairs reach breaking point; Digits is not unusual (label and gaussian reach L2/L5; outliers very robust; decision_tree least robust on all datasets); validation_report.json committed | Gate 4 |
+| 2026-10-05 | Phase 5 | Created run_full.py (--dry-run, --analyze-only, --figures stub, --limit, --out, --levels-path, freeze guard, resume); 8 tests pass; 241 total passing | Task 5.2 |
