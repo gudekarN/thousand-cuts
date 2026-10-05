@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **NOT FROZEN** (active table A, levels_version 1.0.0)
 - Official results: none
-- Last completed task: Task 3.1 (Calibrate command)
-- Next task: Task 3.2 (Freeze command and guards)
+- Last completed task: Task 3.2 (Freeze command and guards)
+- Next task: Task 3.3 (Run calibration)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -111,3 +111,4 @@
 | 2026-10-05 | Phase 2 | Executed MVP run (312 fits, 312 ok, 0 errors, 22.2s runtime); generated raw_results.csv, manifest.json, and all derived analysis CSVs | Task 2.5 |
 | 2026-10-05 | Phase 2 | MVP validation report: all 7 checks PASS. Fixed numpy bool_ JSON serialization bug in json_store.py; fixed CWD-relative path bug in validate.py (now uses official_dir). 194 tests passing | Task 3.1 |
 | 2026-10-05 | Phase 3 | Implemented validate.py calibrate command (T1-T6, recommendations KEEP_A/REVISE_TO_S/REVISE_TO_M/FIX_CODE/ESCALATE_TO_USER); 10 tests; 204 total passing | Task 3.2 |
+| 2026-10-05 | Phase 3 | Implemented validate.py freeze command (preconditions, atomic write, FreezeRefused); 8 tests; levels.json NOT frozen; 212 total passing | Task 3.3 |

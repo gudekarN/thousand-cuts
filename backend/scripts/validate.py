@@ -22,6 +22,7 @@ Calibration tests T1-T6 (Task 3.1, rules.md section 2.2):
 """
 
 import argparse
+import datetime
 import hashlib
 import json
 import sys
@@ -1008,6 +1009,123 @@ def run_calibration(stage: str, out_dir: Path) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Freeze: write frozen fields to levels.json atomically
+# ---------------------------------------------------------------------------
+
+
+class FreezeRefused(RuntimeError):
+    """Raised when a freeze precondition is not satisfied."""
+
+
+def freeze_levels(
+    reason: str,
+    stage_out_dir: Path,
+    levels_path: "Path | None" = None,
+) -> str:
+    """Freeze levels.json if all preconditions are satisfied.
+
+    Preconditions (raises FreezeRefused otherwise):
+      1. validation_report.json exists in *stage_out_dir* and all_passed is True.
+      2. calibration_report.json exists in *stage_out_dir* and
+         recommendation == "KEEP_A".
+      3. levels are not already frozen.
+
+    Action (atomic):
+      - Writes frozen=true, frozen_at (UTC ISO-8601), frozen_reason, config_hash
+        into levels.json via a tmp-file rename.
+
+    Args:
+        reason:        Free-text freeze reason (from --reason).
+        stage_out_dir: Directory containing validation_report.json and
+                       calibration_report.json.
+        levels_path:   Path to levels.json. Defaults to DEFAULT_LEVELS_PATH.
+
+    Returns:
+        The config hash written into levels.json.
+
+    Raises:
+        FreezeRefused: When any precondition is not met.
+    """
+    import tempfile
+    from app.core.hashing import compute_config_hash
+    from app.core.levels import load_levels, DEFAULT_LEVELS_PATH
+
+    if levels_path is None:
+        levels_path = DEFAULT_LEVELS_PATH
+    levels_path = Path(levels_path)
+
+    # ── Precondition 1: all 7 checks must have passed ─────────────────────────
+    val_report_path = stage_out_dir / "validation_report.json"
+    if not val_report_path.exists():
+        raise FreezeRefused(
+            f"Freeze refused: validation_report.json not found in {stage_out_dir}. "
+            "Run 'validate.py checks --stage mvp' first."
+        )
+    val_report = json.loads(val_report_path.read_text(encoding="utf-8"))
+    if not val_report.get("all_passed", False):
+        failed = [
+            c["name"] for c in val_report.get("checks", []) if not c.get("passed")
+        ]
+        raise FreezeRefused(
+            f"Freeze refused: {len(failed)} validation check(s) failed: "
+            f"{', '.join(failed)}. All 7 checks must pass before freezing."
+        )
+
+    # ── Precondition 2: calibration must recommend KEEP_A ─────────────────────
+    calib_report_path = stage_out_dir / "calibration_report.json"
+    if not calib_report_path.exists():
+        raise FreezeRefused(
+            f"Freeze refused: calibration_report.json not found in {stage_out_dir}. "
+            "Run 'validate.py calibrate --stage mvp' first."
+        )
+    calib_report = json.loads(calib_report_path.read_text(encoding="utf-8"))
+    recommendation = calib_report.get("recommendation", "")
+    if recommendation != "KEEP_A":
+        raise FreezeRefused(
+            f"Freeze refused: calibration recommendation is '{recommendation}', "
+            "must be 'KEEP_A'. Resolve calibration issues before freezing."
+        )
+
+    # ── Precondition 3: not already frozen ────────────────────────────────────
+    levels_data = load_levels(levels_path)
+    if levels_data.get("frozen", False):
+        raise FreezeRefused(
+            "Freeze refused: levels.json is already frozen. "
+            "Cannot freeze again without an explicitly approved recovery plan."
+        )
+
+    # ── Compute hash and build updated data ───────────────────────────────────
+    config_hash = compute_config_hash(levels_path)
+    frozen_at = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    levels_data["frozen"] = True
+    levels_data["frozen_at"] = frozen_at
+    levels_data["frozen_reason"] = reason
+    levels_data["config_hash"] = config_hash
+
+    # ── Atomic write via temp file in the same directory ──────────────────────
+    import os
+    parent = levels_path.parent
+    tmp = tempfile.NamedTemporaryFile(
+        "w", dir=parent, delete=False, encoding="utf-8", suffix=".tmp"
+    )
+    tmp_path = Path(tmp.name)
+    try:
+        json.dump(levels_data, tmp, indent=2)
+        tmp.flush()
+        tmp.close()
+        os.replace(tmp_path, levels_path)
+    except Exception:
+        if not tmp.closed:
+            tmp.close()
+        if tmp_path.exists():
+            tmp_path.unlink(missing_ok=True)
+        raise
+
+    return config_hash
+
+
+# ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
 
@@ -1071,6 +1189,17 @@ def main():
     calib_parser.add_argument("--out", type=str, default=None,
                               help="Output directory (default: results/official/<stage>)")
 
+    freeze_parser = subparsers.add_parser("freeze", help="Freeze the level configuration")
+    freeze_parser.add_argument("--reason", required=True, help="Human-readable freeze reason")
+    freeze_parser.add_argument("--confirm", action="store_true",
+                               help="Required flag: confirms you intend to freeze")
+    freeze_parser.add_argument("--stage", default="mvp", choices=["mvp", "stage2", "full"],
+                               help="Stage whose reports are used for precondition checks")
+    freeze_parser.add_argument("--out", type=str, default=None,
+                               help="Stage output dir (default: results/official/<stage>)")
+    freeze_parser.add_argument("--levels-path", type=str, default=None,
+                               help="Path to levels.json (default: configs/levels.json)")
+
     args = parser.parse_args()
 
     if args.command == "checks":
@@ -1096,6 +1225,27 @@ def main():
             out_dir = official_dir(args.stage)
 
         run_calibration(args.stage, out_dir)
+
+    elif args.command == "freeze":
+        if not args.confirm:
+            print(
+                "ERROR: --confirm flag is required to freeze. "
+                "Add --confirm to acknowledge that this is irreversible.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
+        stage_out = Path(args.out) if args.out else official_dir(args.stage)
+        levels_path = Path(args.levels_path) if args.levels_path else None
+
+        try:
+            config_hash = freeze_levels(args.reason, stage_out, levels_path)
+            print(f"Levels frozen successfully.")
+            print(f"  Reason:      {args.reason}")
+            print(f"  Config hash: {config_hash}")
+        except FreezeRefused as e:
+            print(str(e), file=sys.stderr)
+            sys.exit(1)
 
     else:
         parser.print_help()
