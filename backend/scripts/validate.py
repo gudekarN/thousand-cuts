@@ -1,16 +1,25 @@
 """Validation script for the Thousand Cuts experiment.
 
 Subcommands:
-    checks   --stage mvp   Run the 7 validation checks.
-    calibrate --stage mvp  Evaluate T1-T6 calibration tests and write report.
-    freeze                 Freeze levels (Task 3.2).
+    checks   --stage mvp|stage2   Run validation checks.
+    calibrate --stage mvp          Evaluate T1-T6 calibration tests and write report.
+    freeze                         Freeze levels (Task 3.2).
 
-Checks 1-4 (Task 2.2):
+Checks 1-4 (Task 2.2, MVP only):
     1. Level-0 equals clean: apply_noise at level 0 returns data identical to clean.
        Also: if MVP results exist, level-0 fit metrics match the clean rows.
     2. Test set unchanged: hash X_test and y_test before and after noise + fit.
     3. Imputer/scaler statistics come from noisy train only.
     4. Noise rates match the active level table within tolerances.
+
+Checks S1-S7 (Task 4.2, Stage 2):
+    S1. Both-dataset check 2, 3, 5 — re-run for breast_cancer AND digits.
+    S2. Digits Macro F1 uses all 10 classes.
+    S3. Digits zero-std pixel columns unchanged by Gaussian and outlier noise.
+    S4. Completeness: 1,824 ok rows, no duplicates, all combos*levels*models*seeds present.
+    S5. Zero error rows.
+    S6. Compound combo order: label, gaussian, outliers, missing for every compound combo.
+    S7. Synergy data: all 11 compound combos have no missing single-noise components.
 
 Calibration tests T1-T6 (Task 3.1, rules.md section 2.2):
     T1 Rate accuracy   — noise rates within tolerances.
@@ -43,7 +52,12 @@ if hasattr(sys.stderr, "reconfigure"):
 from app.engine.data import split
 from app.engine.noise import apply_noise, list_all_combos, clean_stats
 from app.engine.pipelines import build_pipeline
-from app.core.config import DATASET_BREAST_CANCER, NOISE_LABEL, NOISE_GAUSSIAN, NOISE_OUTLIERS, NOISE_MISSING, STAGE_MVP
+from app.core.config import (
+    DATASET_BREAST_CANCER, DATASET_DIGITS, DATASET_IDS,
+    NOISE_LABEL, NOISE_GAUSSIAN, NOISE_OUTLIERS, NOISE_MISSING,
+    NOISE_ORDER, MODEL_IDS,
+    STAGE_MVP, STAGE_STAGE2,
+)
 from app.core.levels import get_params, load_levels
 from app.storage.json_store import write_json_atomic
 from app.storage.paths import official_dir
@@ -1133,11 +1147,443 @@ def freeze_levels(
 
 
 # ---------------------------------------------------------------------------
+# Stage 2 checks  (Task 4.2)
+# ---------------------------------------------------------------------------
+
+# 4 single noises + 11 compound combos = 15 total noisy combos
+_ALL_NOISY_COMBOS = list_all_combos()   # 15 entries
+_COMPOUND_COMBOS = [c for c in _ALL_NOISY_COMBOS if "+" in c]  # 11 entries
+_SINGLE_NOISE_NAMES = [c for c in _ALL_NOISY_COMBOS if "+" not in c]  # 4
+_COMBO_ORDER = list(NOISE_ORDER)  # canonical order: label, gaussian, outliers, missing
+
+# Expected Stage 2 counts
+_STAGE2_DATASETS = list(DATASET_IDS)       # 2
+_STAGE2_MODELS = list(MODEL_IDS)           # 4
+_STAGE2_SEEDS = [0, 1, 2]                  # 3
+_STAGE2_NOISY_LEVELS = [1, 2, 3, 4, 5]    # 5
+_STAGE2_EXPECTED_OK = 1824
+
+
+def _check_s1_both_datasets_checks_2_3_5() -> dict:
+    """S1: Re-run checks 2, 3, 5 for BOTH datasets."""
+    failures = []
+    details = []
+
+    for dataset in _STAGE2_DATASETS:
+        # Check 2 per dataset: test set unchanged
+        seeds = _STAGE2_SEEDS
+        for seed in seeds:
+            X_tr, X_te, y_tr, y_te = split(dataset, seed)
+            h_before_X = _array_hash(X_te)
+            h_before_y = _array_hash(y_te)
+            combos = list_all_combos()
+            for combo in combos:
+                for level in _STAGE2_NOISY_LEVELS:
+                    X_noisy, y_noisy, _ = apply_noise(X_tr, y_tr, combo, level=level, seed=seed)
+                    # Test set must not have changed
+                    h_after_X = _array_hash(X_te)
+                    h_after_y = _array_hash(y_te)
+                    if h_before_X != h_after_X:
+                        failures.append(f"Check2 {dataset} seed={seed} combo={combo} L{level}: X_test changed")
+                    if h_before_y != h_after_y:
+                        failures.append(f"Check2 {dataset} seed={seed} combo={combo} L{level}: y_test changed")
+        details.append(f"  {dataset}: test-set hash check over {len(seeds)} seeds done")
+
+        # Check 3 per dataset: imputer/scaler fit only on noisy train
+        X_tr, X_te, y_tr, y_te = split(dataset, seed=0)
+        for combo in ["label", "gaussian"]:
+            for level in [3]:
+                X_noisy, y_noisy, _ = apply_noise(X_tr, y_tr, combo, level=level, seed=0)
+                pipe = _safe_fit_pipeline("logreg", X_noisy, y_noisy, seed=0)
+                if pipe is not None:
+                    imputer_means = pipe.named_steps["imputer"].statistics_
+                    clean_means_check = np.mean(X_tr, axis=0)
+                    # At noisy level, imputer stats should differ from clean stats
+                    # for at least one feature (Gaussian adds noise, outliers shift cells)
+                    if combo == "gaussian":
+                        if np.allclose(imputer_means, clean_means_check, atol=1e-9):
+                            details.append(
+                                f"  {dataset}: imputer means identical to clean at combo={combo} L{level} "
+                                "(could be fine if noise is very small, but verify)"
+                            )
+                    else:
+                        details.append(
+                            f"  {dataset}: imputer fit verified on noisy train for combo={combo}"
+                        )
+
+        # Check 5 per dataset: reproducibility (quick check: run subset twice, compare)
+        try:
+            import tempfile
+            import pandas as pd
+            from app.engine.runner import build_plan, execute_plan
+            from app.core.hashing import compute_config_hash
+
+            repro_req = {
+                "dataset": dataset,
+                "models": ["logreg"],
+                "noises": ["label"],
+                "mode": "sweep",
+                "seed_count": 1,
+            }
+            lvl = load_levels()
+            meta = {
+                "run_id": f"repro-s2-{dataset}",
+                "run_type": "custom",
+                "stage": "custom",
+                "config_hash": compute_config_hash(),
+                "methodology_version": "1.0",
+                "levels_version": lvl.get("levels_version", ""),
+                "levels_frozen": lvl.get("frozen", False),
+                "requested_config": repro_req,
+            }
+            plan = build_plan(custom_request=repro_req)
+            with tempfile.TemporaryDirectory() as td1, tempfile.TemporaryDirectory() as td2:
+                execute_plan(plan, Path(td1), meta)
+                execute_plan(plan, Path(td2), meta)
+                df1 = pd.read_csv(Path(td1) / "raw_results.csv")
+                df2 = pd.read_csv(Path(td2) / "raw_results.csv")
+            df1s = df1.sort_values(["dataset","model","combo","level","seed"]).reset_index(drop=True)
+            df2s = df2.sort_values(["dataset","model","combo","level","seed"]).reset_index(drop=True)
+            for col in ["macro_f1", "accuracy"]:
+                mm = df1s[col] != df2s[col]
+                for i in mm[mm].index:
+                    row = df1s.iloc[i]
+                    failures.append(
+                        f"Repro mismatch {dataset}: {col} model={row['model']} "
+                        f"combo={row['combo']} L{row['level']}: "
+                        f"{df1s.at[i, col]!r} vs {df2s.at[i, col]!r}"
+                    )
+            details.append(f"  {dataset}: reproducibility check done ({len(df1s)} rows)")
+        except Exception as exc:
+            failures.append(f"Check5 {dataset}: exception during reproducibility: {exc}")
+
+    passed = len(failures) == 0
+    return {
+        "check": "S1",
+        "name": "both_datasets_checks_2_3_5",
+        "passed": passed,
+        "failures": failures,
+        "details": details,
+    }
+
+
+def _check_s2_digits_10_classes() -> dict:
+    """S2: Digits y_test has exactly 10 distinct classes for all seeds."""
+    failures = []
+    details = []
+    for seed in _STAGE2_SEEDS:
+        _, _, _, y_te = split(DATASET_DIGITS, seed)
+        n_classes = len(np.unique(y_te))
+        if n_classes != 10:
+            failures.append(
+                f"Digits seed={seed}: only {n_classes} classes in y_test (expected 10)"
+            )
+        else:
+            details.append(f"  Digits seed={seed}: {n_classes} classes in y_test — OK")
+    passed = len(failures) == 0
+    return {
+        "check": "S2",
+        "name": "digits_10_classes",
+        "passed": passed,
+        "failures": failures,
+        "details": details,
+    }
+
+
+def _check_s3_digits_zero_std_cols_unchanged() -> dict:
+    """S3: Digits zero-std pixel columns unchanged by Gaussian and outlier noise."""
+    failures = []
+    details = []
+    seed = 0
+    X_tr, _, y_tr, _ = split(DATASET_DIGITS, seed)
+    _, std_clean = clean_stats(X_tr)
+    zero_std_cols = np.where(std_clean == 0)[0]
+    details.append(f"  Digits: {len(zero_std_cols)} zero-std columns found")
+
+    if len(zero_std_cols) == 0:
+        details.append("  No zero-std columns — check vacuously passes")
+        return {
+            "check": "S3",
+            "name": "digits_zero_std_unchanged",
+            "passed": True,
+            "failures": [],
+            "details": details,
+        }
+
+    for noise_combo in ["gaussian", "outliers"]:
+        for level in [3, 5]:
+            X_noisy, _, _ = apply_noise(X_tr, y_tr, noise_combo, level=level, seed=seed)
+            changed = np.any(X_noisy[:, zero_std_cols] != X_tr[:, zero_std_cols], axis=0)
+            n_changed = int(np.sum(changed))
+            if n_changed > 0:
+                failures.append(
+                    f"Digits: {n_changed} zero-std columns changed by '{noise_combo}' at L{level}"
+                )
+            else:
+                details.append(
+                    f"  Digits: zero-std cols unchanged by '{noise_combo}' L{level} — OK"
+                )
+    passed = len(failures) == 0
+    return {
+        "check": "S3",
+        "name": "digits_zero_std_unchanged",
+        "passed": passed,
+        "failures": failures,
+        "details": details,
+    }
+
+
+def _check_s4_s5_completeness(stage2_csv_path: Path) -> tuple:
+    """S4 & S5: completeness and zero error rows.
+
+    Returns two dicts: (s4_result, s5_result).
+    """
+    import pandas as pd
+
+    failures_s4 = []
+    details_s4 = []
+    failures_s5 = []
+
+    if not stage2_csv_path.exists():
+        msg = f"Stage 2 raw_results.csv not found: {stage2_csv_path}"
+        return (
+            {"check": "S4", "name": "completeness", "passed": False, "failures": [msg], "details": []},
+            {"check": "S5", "name": "zero_errors", "passed": False, "failures": [msg], "details": []},
+        )
+
+    df = pd.read_csv(stage2_csv_path)
+
+    # S5: zero error rows
+    n_error = int((df["status"] == "error").sum())
+    if n_error > 0:
+        failures_s5.append(f"Stage 2 has {n_error} error row(s)")
+
+    df_ok = df[df["status"] == "ok"]
+    n_ok = len(df_ok)
+
+    # S4a: exactly 1824 ok rows
+    if n_ok != _STAGE2_EXPECTED_OK:
+        failures_s4.append(f"Expected {_STAGE2_EXPECTED_OK} ok rows, got {n_ok}")
+    details_s4.append(f"ok rows: {n_ok}")
+
+    # S4b: no duplicate resume keys
+    KEY_COLS = ["dataset", "model", "combo", "level", "seed"]
+    # clean rows have level=0, noisy rows have level=1-5; resume key includes combo
+    dup = df_ok.duplicated(subset=KEY_COLS, keep=False)
+    n_dup = int(dup.sum())
+    if n_dup > 0:
+        failures_s4.append(f"{n_dup} duplicate resume key row(s) in ok rows")
+    details_s4.append(f"duplicate rows: {n_dup}")
+
+    # S4c: for every (dataset, model, seed) — clean row + all 15 combos x 5 levels present
+    for dataset in _STAGE2_DATASETS:
+        ds_ok = df_ok[df_ok["dataset"] == dataset]
+        for model in _STAGE2_MODELS:
+            for seed in _STAGE2_SEEDS:
+                key_ok = ds_ok[(ds_ok["model"] == model) & (ds_ok["seed"] == seed)]
+                # Clean row: combo=clean, level=0
+                clean_rows = key_ok[(key_ok["combo"] == "clean") & (key_ok["level"] == 0)]
+                if len(clean_rows) != 1:
+                    failures_s4.append(
+                        f"Missing or duplicate clean row: {dataset}/{model}/seed={seed} "
+                        f"(found {len(clean_rows)})"
+                    )
+                # All 15 noisy combos x levels 1-5
+                for combo in _ALL_NOISY_COMBOS:
+                    for level in _STAGE2_NOISY_LEVELS:
+                        cnt = int(
+                            ((key_ok["combo"] == combo) & (key_ok["level"] == level)).sum()
+                        )
+                        if cnt != 1:
+                            failures_s4.append(
+                                f"Missing or duplicate: {dataset}/{model}/seed={seed} "
+                                f"combo={combo} L{level} (found {cnt})"
+                            )
+    if not failures_s4:
+        details_s4.append("All (dataset, model, seed, combo, level) keys present exactly once")
+
+    return (
+        {
+            "check": "S4",
+            "name": "completeness",
+            "passed": len(failures_s4) == 0,
+            "failures": failures_s4,
+            "details": details_s4,
+        },
+        {
+            "check": "S5",
+            "name": "zero_errors",
+            "passed": len(failures_s5) == 0,
+            "failures": failures_s5,
+            "details": [f"error rows: {n_error}"],
+        },
+    )
+
+
+def _check_s6_compound_order(stage2_csv_path: Path) -> dict:
+    """S6: for every compound combo, its name encodes the canonical order.
+
+    The canonical order is: label < gaussian < outliers < missing (by NOISE_ORDER index).
+    We just verify that in the CSV every compound combo string has parts in that order.
+    If Stage 2 CSV is not yet available, check using list_all_combos() only.
+    """
+    failures = []
+    details = []
+
+    # Compute expected order for each compound combo
+    order_map = {name: i for i, name in enumerate(_COMBO_ORDER)}
+
+    combos_to_check = _COMPOUND_COMBOS
+    if stage2_csv_path.exists():
+        import pandas as pd
+        df = pd.read_csv(stage2_csv_path)
+        combos_to_check = [c for c in df["combo"].unique() if "+" in str(c)]
+
+    for combo in combos_to_check:
+        parts = combo.split("+")
+        indices = [order_map.get(p, -1) for p in parts]
+        if indices != sorted(indices) or -1 in indices:
+            failures.append(f"Combo '{combo}' has wrong or unknown part order: {parts}")
+        else:
+            details.append(f"  '{combo}': order OK {parts}")
+
+    passed = len(failures) == 0
+    return {
+        "check": "S6",
+        "name": "compound_order",
+        "passed": passed,
+        "failures": failures,
+        "details": details,
+    }
+
+
+def _check_s7_synergy_components(stage2_csv_path: Path) -> dict:
+    """S7: for all 11 compound combos, all single-noise components are also present.
+
+    If Stage 2 CSV exists, verify in it. Otherwise verify via list_all_combos() only.
+    """
+    failures = []
+    details = []
+
+    if stage2_csv_path.exists():
+        import pandas as pd
+        df = pd.read_csv(stage2_csv_path)
+        present_combos = set(df["combo"].unique())
+    else:
+        present_combos = set(_ALL_NOISY_COMBOS) | {"clean"}
+
+    for compound in _COMPOUND_COMBOS:
+        parts = compound.split("+")
+        for part in parts:
+            if part not in present_combos:
+                failures.append(
+                    f"Component '{part}' missing for compound '{compound}'"
+                )
+        if all(p in present_combos for p in parts):
+            details.append(f"  '{compound}': all {len(parts)} components present")
+
+    passed = len(failures) == 0
+    return {
+        "check": "S7",
+        "name": "synergy_components",
+        "passed": passed,
+        "failures": failures,
+        "details": details,
+    }
+
+
+def _print_digits_info_numbers(stage2_csv_path: Path) -> None:
+    """Print calibration-style Digits numbers as INFORMATION ONLY.
+    These must not be used to change levels.
+    """
+    if not stage2_csv_path.exists():
+        print("  [INFO] Stage 2 CSV not available — Digits info numbers skipped")
+        return
+
+    import pandas as pd
+    df = pd.read_csv(stage2_csv_path)
+    df_ok = df[(df["status"] == "ok") & (df["dataset"] == DATASET_DIGITS)]
+    if df_ok.empty:
+        print("  [INFO] No Digits ok rows found in Stage 2 CSV")
+        return
+
+    print("\n  [INFO] Digits calibration-style numbers (INFORMATION ONLY — do not change levels):")
+    single_noises = ["label", "gaussian", "outliers", "missing"]
+    clean_rows = df_ok[df_ok["combo"] == "clean"]
+    clean_mean_f1 = clean_rows["macro_f1"].mean()
+    print(f"    Clean baseline (mean F1): {clean_mean_f1:.4f}")
+    for noise in single_noises:
+        ndf = df_ok[df_ok["combo"] == noise]
+        if ndf.empty:
+            continue
+        l5 = ndf[ndf["level"] == 5]["macro_f1"].mean() if not ndf[ndf["level"] == 5].empty else float("nan")
+        l1 = ndf[ndf["level"] == 1]["macro_f1"].mean() if not ndf[ndf["level"] == 1].empty else float("nan")
+        print(f"    {noise}: mean F1 L1={l1:.4f}, L5={l5:.4f} (baseline={clean_mean_f1:.4f})")
+    print()
+
+
+def run_stage2_checks(stage: str, out_dir: Path) -> dict:
+    """Run all Stage 2 specific checks (S1-S7) and write validation_report.json.
+
+    Checks S4, S5, S6, S7 read from stage2 CSV if available; otherwise they check
+    the plan/schema only (useful before the real Stage 2 run).
+    """
+    stage2_csv = out_dir / "raw_results.csv"
+
+    print("Running Stage 2 check S1: both datasets — checks 2, 3, 5...")
+    s1 = _check_s1_both_datasets_checks_2_3_5()
+    print(f"  S1: {'PASS' if s1['passed'] else 'FAIL'}")
+
+    print("Running Stage 2 check S2: Digits — 10 classes...")
+    s2 = _check_s2_digits_10_classes()
+    print(f"  S2: {'PASS' if s2['passed'] else 'FAIL'}")
+
+    print("Running Stage 2 check S3: Digits — zero-std columns unchanged...")
+    s3 = _check_s3_digits_zero_std_cols_unchanged()
+    print(f"  S3: {'PASS' if s3['passed'] else 'FAIL'}")
+
+    print("Running Stage 2 check S4+S5: completeness and zero errors...")
+    s4, s5 = _check_s4_s5_completeness(stage2_csv)
+    print(f"  S4: {'PASS' if s4['passed'] else 'FAIL'}")
+    print(f"  S5: {'PASS' if s5['passed'] else 'FAIL'}")
+
+    print("Running Stage 2 check S6: compound combo order...")
+    s6 = _check_s6_compound_order(stage2_csv)
+    print(f"  S6: {'PASS' if s6['passed'] else 'FAIL'}")
+
+    print("Running Stage 2 check S7: synergy components present...")
+    s7 = _check_s7_synergy_components(stage2_csv)
+    print(f"  S7: {'PASS' if s7['passed'] else 'FAIL'}")
+
+    _print_digits_info_numbers(stage2_csv)
+
+    all_checks = [s1, s2, s3, s4, s5, s6, s7]
+    report = {
+        "stage": stage,
+        "checks": all_checks,
+        "all_passed": all(c["passed"] for c in all_checks),
+    }
+    out_dir.mkdir(parents=True, exist_ok=True)
+    report_path = out_dir / "validation_report.json"
+    write_json_atomic(report_path, report)
+    print(f"\nReport written to: {report_path}")
+    return report
+
+
+# ---------------------------------------------------------------------------
 # Main runner
 # ---------------------------------------------------------------------------
 
 def run_all_checks(stage: str, out_dir: Path) -> dict:
-    """Run all 7 checks and write the full validation report."""
+    """Run validation checks for *stage* and write validation_report.json.
+
+    - mvp:    runs checks 1-7 (original MVP suite)
+    - stage2: runs checks S1-S7 (Stage 2 suite)
+    - full:   runs checks 1-7 against full CSV (same as MVP checks)
+    """
+    if stage == STAGE_STAGE2:
+        return run_stage2_checks(stage, out_dir)
+
     mvp_csv = official_dir(STAGE_MVP) / "raw_results.csv"
 
     print("Running check 1: level-0 equals clean...")

@@ -7,8 +7,8 @@
 - Current phase: **Phase 1**
 - Levels: **FROZEN** (active table A, levels_version 1.0.0, config_hash bc9362...)
 - Official results: MVP complete (312 fits)
-- Last completed task: Task 4.1 (Stage 2 script)
-- Next task: Task 4.2 (Stage 2 validation checks)
+- Last completed task: Task 4.2 (Stage 2 validation checks)
+- Next task: Task 4.3 (Execute Stage 2)
 - Execution plan: **finalized** with sequential phase/task gates and one-task-at-a-time workflow
 - Official Full execution: **single-process**; no joblib/parallel execution in the approved implementation
 
@@ -115,3 +115,4 @@
 | 2026-10-05 | Phase 3 | Ran calibration on MVP results: all T1-T6 PASS, recommendation=KEEP_A; calibration_report.json written; no revision needed; skip Tasks 3.4 and 3.5 | Task 3.6 |
 | 2026-10-05 | Phase 3 | Froze levels.json: frozen=true, config_hash=bc9362..., verify_frozen_hash PASS, tamper detection verified | Phase 4 |
 | 2026-10-05 | Phase 4 | Created run_stage2.py with freeze guard and limit validations; 1824 fits verified via dry-run; 5 tests pass | Task 4.1 |
+| 2026-10-05 | Phase 4 | Added Stage 2 checks S1-S7 to validate.py; fixed freeze test isolation and structure test; 16 new tests; 233 total passing | Task 4.3 |

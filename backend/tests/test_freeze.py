@@ -34,9 +34,20 @@ REAL_LEVELS_PATH = Path(__file__).resolve().parents[1] / "configs" / "levels.jso
 
 
 def _copy_levels(tmp_path: Path) -> Path:
-    """Copy the real levels.json to tmp_path and return the copy path."""
+    """Copy the real levels.json to tmp_path, reset frozen state, and return the copy path.
+
+    Tests operate on unfrozen temp copies so they remain independent of the
+    real freeze state (which may be frozen=True after Task 3.6).
+    """
     dst = tmp_path / "levels.json"
     shutil.copy2(REAL_LEVELS_PATH, dst)
+    # Reset freeze fields so tests are self-contained
+    data = json.loads(dst.read_text(encoding="utf-8"))
+    data["frozen"] = False
+    data["frozen_at"] = None
+    data["frozen_reason"] = None
+    data["config_hash"] = None
+    dst.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return dst
 
 

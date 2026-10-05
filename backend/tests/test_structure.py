@@ -115,7 +115,11 @@ def test_levels_json_integrity():
 
     assert data.get("levels_version") == "1.0.0"
     assert data.get("active_table") == "A"
-    assert data.get("frozen") is False
+    # frozen may be True (legitimately frozen after Task 3.6) or False (pre-freeze)
+    assert isinstance(data.get("frozen"), bool), "frozen field must be a bool"
+    if data.get("frozen"):
+        assert data.get("config_hash") is not None, "frozen file must have config_hash"
+        assert data.get("frozen_at") is not None, "frozen file must have frozen_at"
     assert data.get("level_indices") == [0, 1, 2, 3, 4, 5]
     assert "tables" in data
     assert set(data["tables"].keys()) == {"A", "S", "M"}
