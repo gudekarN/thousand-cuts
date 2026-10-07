@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.errors import register_exception_handlers
 from app.api.health import router as health_router
 from app.api.config_routes import router as config_router
+from app.api.results_routes import router as results_router
 
 
 @asynccontextmanager
@@ -41,3 +42,4 @@ register_exception_handlers(app)
 # Mount routers under /api
 app.include_router(health_router, prefix="/api")
 app.include_router(config_router, prefix="/api")
+app.include_router(results_router, prefix="/api")
