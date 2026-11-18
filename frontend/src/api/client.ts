@@ -171,6 +171,45 @@ export interface SynergyRow {
   floor_effect: boolean
 }
 
+/** Baseline row exactly as returned by GET /api/experiments/{id}/results. */
+export interface ExperimentBaselineRow {
+  dataset: string
+  model: string
+  f1_mean: number
+  f1_std: number | null
+  acc_mean: number
+  acc_std: number | null
+  threshold_f1: number
+}
+
+/** Synergy row exactly as returned by GET /api/experiments/{id}/results. */
+export interface ExperimentSynergyRow {
+  dataset: string
+  model: string
+  combo: string
+  level: number
+  baseline_f1: number
+  compound_f1: number
+  drop_compound: number
+  sum_single_drops: number
+  synergy: number
+  f1_floor_flag: boolean
+}
+
+export interface ExperimentResultsResponse {
+  run_id: string
+  run_type: 'custom'
+  status: JobStatus
+  request: ExperimentRequest
+  progress: JobProgress
+  available: boolean
+  baselines: ExperimentBaselineRow[]
+  summary: SummaryRow[]
+  breaking_points: BreakingPointRow[]
+  synergy: ExperimentSynergyRow[]
+  robustness: RobustnessRow[]
+}
+
 async function apiFetch<T>(path: string, params?: Record<string, string>, init?: RequestInit): Promise<T> {
   const url = new URL(`/api${path}`, window.location.origin)
   if (params) {
@@ -235,4 +274,8 @@ export const api = {
     apiFetch<JobResponse>(`/experiments/${encodeURIComponent(runId)}/cancel`, undefined, {
       method: 'POST',
     }),
+  experimentResults: (runId: string) =>
+    apiFetch<ExperimentResultsResponse>(
+      `/experiments/${encodeURIComponent(runId)}/results`
+    ),
 }

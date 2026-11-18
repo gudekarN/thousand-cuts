@@ -4,6 +4,7 @@ import {
   type ApiConfig,
   type EstimateResponse,
   type ExperimentRequest,
+  type ExperimentResultsResponse,
   type JobResponse,
   type SummaryRow,
   type BreakingPointRow,
@@ -90,6 +91,17 @@ export function useExperiment(runId: string | null) {
       const status = query.state.data?.status
       return status === 'queued' || status === 'running' ? 1000 : false
     },
+    retry: 1,
+  })
+}
+
+/** Derived results for one custom run. Fetch only when the run is finalised. */
+export function useExperimentResults(runId: string | null, enabled = true) {
+  return useQuery<ExperimentResultsResponse, Error>({
+    queryKey: ['experiment-results', runId],
+    queryFn: () => api.experimentResults(runId as string),
+    enabled: runId !== null && enabled,
+    staleTime: 30_000,
     retry: 1,
   })
 }
