@@ -309,6 +309,81 @@ def test_worker_heartbeat_written(results_root):
     assert worker.worker_status()["status"] == "idle"
 
 
+def test_heartbeat_permission_error_does_not_fail_job(results_root, monkeypatch):
+    """Heartbeat failures are observability failures, not experiment failures."""
+
+    def broken_heartbeat(*_args, **_kwargs):
+        raise PermissionError(5, "Access is denied")
+
+    monkeypatch.setattr(worker, "write_heartbeat", broken_heartbeat)
+
+    job = manager.create_job(_small_request())
+    result = worker.execute_job(job)
+
+    assert result == "completed"
+    stored = manager.read_job(job["run_id"])
+    assert stored["status"] == "completed"
+    rows = read_rows(custom_dir(job["run_id"]) / "raw_results.csv")
+    assert len(rows) == 2
+    assert {row["status"] for row in rows} == {"ok"}
+
+
+def test_genuine_execution_exception_still_marks_job_failed(results_root, monkeypatch):
+    """Real execution failures must continue to fail the job."""
+
+    def broken_execute(*_args, **_kwargs):
+        raise RuntimeError("simulated fit failure")
+
+    monkeypatch.setattr(worker, "execute_plan", broken_execute)
+
+    job = manager.create_job(_small_request())
+    result = worker.execute_job(job)
+
+    assert result == "failed"
+    stored = manager.read_job(job["run_id"])
+    assert stored["status"] == "failed"
+    assert "simulated fit failure" in stored["error"]
+
+
+def test_worker_loop_survives_heartbeat_permission_errors(results_root, monkeypatch):
+    """A heartbeat failure must not terminate the worker loop."""
+
+    def broken_heartbeat(*_args, **_kwargs):
+        raise PermissionError(5, "Access is denied")
+
+    monkeypatch.setattr(worker, "write_heartbeat", broken_heartbeat)
+
+    stop_event = threading.Event()
+    errors = []
+
+    def run_worker():
+        try:
+            worker.worker_loop(stop_event)
+        except Exception as exc:  # pragma: no cover - failure path assertion
+            errors.append(exc)
+
+    thread = threading.Thread(target=run_worker, daemon=True)
+    thread.start()
+    time.sleep(0.2)
+    stop_event.set()
+    thread.join(timeout=5)
+
+    assert not thread.is_alive()
+    assert errors == []
+
+
+def test_worker_main_shutdown_heartbeat_failure_is_non_fatal(monkeypatch):
+    """worker_main must not raise when its final heartbeat write fails."""
+
+    def broken_heartbeat(*_args, **_kwargs):
+        raise PermissionError(5, "Access is denied")
+
+    monkeypatch.setattr(worker, "worker_loop", lambda: None)
+    monkeypatch.setattr(worker, "write_heartbeat", broken_heartbeat)
+
+    worker.worker_main()
+
+
 def test_interrupted_running_job_marked_failed(results_root):
     job = manager.create_job(_small_request())
     manager.claim_next_job()

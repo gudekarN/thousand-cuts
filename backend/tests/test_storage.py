@@ -1,8 +1,11 @@
 """Unit tests for storage utilities (paths, CSV store, atomic JSON store)."""
 
 from pathlib import Path
+import os
+
 import pytest
 
+import app.storage.json_store as json_store
 from app.storage.csv_store import RAW_COLUMNS, append_row, completed_keys, read_rows
 from app.storage.json_store import read_json, write_json_atomic
 from app.storage.paths import custom_dir, get_results_root, official_dir
@@ -247,6 +250,46 @@ class TestJsonStore:
         # Target file retains original content
         assert read_json(target) == original_data
 
-        # No temporary files remain
-        tmp_files = list(tmp_path.glob("*.tmp"))
-        assert len(tmp_files) == 0
+    def test_atomic_write_retries_transient_permission_error(self, tmp_path, monkeypatch):
+        """A transient Windows lock on the target is retried, preserving atomicity."""
+        target = tmp_path / "worker_heartbeat.json"
+        write_json_atomic(target, {"version": 1})
+
+        real_replace = os.replace
+        calls = []
+
+        def flaky_replace(src, dst):
+            calls.append((src, dst))
+            if len(calls) <= 2:
+                raise PermissionError(5, "Access is denied")
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(json_store.os, "replace", flaky_replace)
+        monkeypatch.setattr(json_store.time, "sleep", lambda _delay: None)
+
+        write_json_atomic(target, {"version": 2})
+
+        assert read_json(target) == {"version": 2}
+        assert len(calls) == 3
+        assert not list(tmp_path.glob("*.tmp"))
+
+    def test_atomic_write_retry_exhaustion_preserves_target(self, tmp_path, monkeypatch):
+        """Exhausted retries raise and leave the previous target intact."""
+        target = tmp_path / "worker_heartbeat.json"
+        write_json_atomic(target, {"version": 1})
+
+        calls = []
+
+        def always_denied(src, dst):
+            calls.append((src, dst))
+            raise PermissionError(5, "Access is denied")
+
+        monkeypatch.setattr(json_store.os, "replace", always_denied)
+        monkeypatch.setattr(json_store.time, "sleep", lambda _delay: None)
+
+        with pytest.raises(PermissionError):
+            write_json_atomic(target, {"version": 2})
+
+        assert len(calls) == 5
+        assert read_json(target) == {"version": 1}
+        assert not list(tmp_path.glob("*.tmp"))

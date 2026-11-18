@@ -38,6 +38,10 @@ logger = logging.getLogger(__name__)
 HEARTBEAT_FILENAME = "worker_heartbeat.json"
 POLL_INTERVAL_SECONDS = float(os.environ.get("WORKER_POLL_SECONDS", "0.5"))
 HEARTBEAT_STALE_SECONDS = float(os.environ.get("WORKER_HEARTBEAT_STALE_SECONDS", "30"))
+_HEARTBEAT_WARN_INTERVAL_SECONDS = 60.0
+
+_last_heartbeat_warning_at = 0.0
+_last_heartbeat_warning_key: Optional[tuple[str, Optional[str]]] = None
 
 
 def _now() -> str:
@@ -61,6 +65,32 @@ def write_heartbeat(status: str, current_run_id: Optional[str] = None) -> Dict[s
     path.parent.mkdir(parents=True, exist_ok=True)
     write_json_atomic(path, payload)
     return payload
+
+
+def _safe_heartbeat(status: str, current_run_id: Optional[str] = None) -> bool:
+    """Best-effort heartbeat write; heartbeat failures must never fail a job."""
+    global _last_heartbeat_warning_at, _last_heartbeat_warning_key
+    try:
+        write_heartbeat(status, current_run_id)
+        _last_heartbeat_warning_key = None
+        return True
+    except Exception as exc:
+        now = time.monotonic()
+        key = (status, current_run_id)
+        if key != _last_heartbeat_warning_key or (
+            now - _last_heartbeat_warning_at >= _HEARTBEAT_WARN_INTERVAL_SECONDS
+        ):
+            logger.warning(
+                "Worker heartbeat write failed (status=%s, run_id=%s, path=%s): %s",
+                status,
+                current_run_id,
+                heartbeat_path(),
+                exc,
+                exc_info=True,
+            )
+            _last_heartbeat_warning_at = now
+            _last_heartbeat_warning_key = key
+        return False
 
 
 _WORKER_STARTED_UTC: Optional[str] = None
@@ -132,7 +162,7 @@ def execute_job(job: Dict[str, Any]) -> str:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     manager.touch_running_job(run_id, os.getpid())
-    write_heartbeat("running", run_id)
+    _safe_heartbeat("running", run_id)
 
     plan = build_plan(custom_request=request)
     total = len(plan)
@@ -152,7 +182,7 @@ def execute_job(job: Dict[str, Any]) -> str:
             eta_seconds=round(eta, 2) if eta is not None else None,
             heartbeat_utc=_now(),
         )
-        write_heartbeat("running", run_id)
+        _safe_heartbeat("running", run_id)
 
     try:
         result = execute_plan(
@@ -194,7 +224,7 @@ def execute_job(job: Dict[str, Any]) -> str:
         manager.finish_job(run_id, "failed", error=str(exc))
         return "failed"
     finally:
-        write_heartbeat("idle")
+        _safe_heartbeat("idle")
 
 
 def worker_loop(stop_event: Optional[threading.Event] = None) -> None:
@@ -203,14 +233,14 @@ def worker_loop(stop_event: Optional[threading.Event] = None) -> None:
     _WORKER_STARTED_UTC = _now()
 
     manager.mark_interrupted_jobs_failed("Worker restarted: interrupted job")
-    write_heartbeat("idle")
+    _safe_heartbeat("idle")
 
     while True:
         if stop_event is not None and stop_event.is_set():
             break
         job = manager.claim_next_job()
         if job is None:
-            write_heartbeat("idle")
+            _safe_heartbeat("idle")
             if stop_event is not None:
                 stop_event.wait(POLL_INTERVAL_SECONDS)
             else:
@@ -218,7 +248,7 @@ def worker_loop(stop_event: Optional[threading.Event] = None) -> None:
             continue
         execute_job(job)
 
-    write_heartbeat("stopped")
+    _safe_heartbeat("stopped")
 
 
 def worker_main() -> None:
@@ -233,7 +263,7 @@ def worker_main() -> None:
     except KeyboardInterrupt:
         logger.info("Custom experiment worker interrupted")
     finally:
-        write_heartbeat("stopped")
+        _safe_heartbeat("stopped")
 
 
 if __name__ == "__main__":
