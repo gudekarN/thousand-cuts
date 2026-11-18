@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   AlertTriangle,
   Ban,
@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   Database,
+  ExternalLink,
   Layers,
   Loader2,
   Play,
@@ -743,6 +744,14 @@ export default function ExperimentSetup() {
 
                   {/* Actions */}
                   <div className="flex flex-wrap gap-2">
+                    {job.status === 'completed' && runId && (
+                      <Link
+                        to={`/results/${encodeURIComponent(runId)}`}
+                        className="flex-1 min-w-[130px] py-2 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" /> View Results
+                      </Link>
+                    )}
                     {isActive && (
                       <button
                         type="button"
