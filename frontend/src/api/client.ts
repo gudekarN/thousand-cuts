@@ -158,7 +158,12 @@ export interface ManifestData {
   completed_fits: number
   seeds: number[]
   methodology_version?: string
-  config_hash?: string
+  config_hash?: string | null
+  created_utc?: string | null
+  finished_utc?: string | null
+  methodology_snapshot?: {
+    version?: string
+  }
 }
 
 export interface SynergyRow {

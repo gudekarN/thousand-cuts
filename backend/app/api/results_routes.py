@@ -10,13 +10,24 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 from fastapi import APIRouter, HTTPException
 
+from app.api.errors import ApiError
+from app.core.config import STAGES
 from app.storage.paths import official_dir
 
 router = APIRouter()
 
 
 def _csv(stage: str, name: str) -> Path:
-    return official_dir(stage) / name
+    try:
+        base = official_dir(stage)
+    except ValueError as exc:
+        raise ApiError(
+            422,
+            "INVALID_STAGE",
+            str(exc),
+            {"allowed_stages": list(STAGES)},
+        ) from exc
+    return base / name
 
 
 def _read_csv(stage: str, filename: str) -> pd.DataFrame:

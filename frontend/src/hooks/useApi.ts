@@ -62,10 +62,11 @@ export function useSynergy(params?: { stage?: string; dataset?: string }) {
   })
 }
 
-export function useManifest(stage?: string) {
+export function useManifest(stage?: string, enabled = true) {
   return useQuery({
     queryKey: ['manifest', stage ?? 'full'],
     queryFn: () => api.manifest(stage ?? 'full'),
+    enabled,
     staleTime: 5 * 60_000,
   })
 }
