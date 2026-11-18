@@ -20,6 +20,87 @@ export interface ApiConfig {
 
 export interface HealthResponse {
   status: string
+  worker?: {
+    status: string
+    heartbeat_utc: string | null
+    current_run_id: string | null
+  } | null
+}
+
+export type ExperimentMode = 'single_level' | 'sweep'
+export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+export interface ExperimentRequest {
+  dataset: string
+  models: string[]
+  noises: string[]
+  mode: ExperimentMode
+  level: number | null
+  seeds: number
+}
+
+export interface EstimateResponse {
+  planned_fits: number
+  estimated_seconds: number
+  mean_fit_time_s: number
+  estimate_source: string
+  combos: string[]
+  seeds: number[]
+}
+
+export interface JobProgress {
+  done: number
+  total: number
+  percent: number
+  current: {
+    dataset: string
+    model: string
+    combo: string
+    noise: string
+    level: number
+    seed: number
+  } | null
+  eta_seconds: number | null
+}
+
+export interface JobResponse {
+  run_id: string
+  run_type: 'custom'
+  status: JobStatus
+  request: ExperimentRequest
+  planned_fits: number
+  progress: JobProgress
+  created_utc: string
+  started_utc: string | null
+  finished_utc: string | null
+  heartbeat_utc: string | null
+  cancel_requested: boolean
+  error: string | null
+  manifest_summary?: {
+    status: string | null
+    config_hash: string | null
+    seeds: number[] | null
+    planned_fits: number | null
+    completed_fits: number | null
+    created_utc: string | null
+    finished_utc: string | null
+    methodology_version: string | null
+  } | null
+  results_available?: boolean
+}
+
+export class ApiRequestError extends Error {
+  status: number
+  code: string
+  details?: unknown
+
+  constructor(status: number, code: string, message: string, details?: unknown) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+    this.code = code
+    this.details = details
+  }
 }
 
 export interface SummaryRow {
@@ -101,7 +182,23 @@ async function apiFetch<T>(path: string, params?: Record<string, string>, init?:
   })
   if (!res.ok) {
     const text = await res.text()
-    throw new Error(`API ${res.status}: ${text}`)
+    let code = `HTTP_${res.status}`
+    let message = text || `Request failed with status ${res.status}`
+    let details: unknown
+    try {
+      const parsed = JSON.parse(text)
+      if (parsed?.error) {
+        code = parsed.error.code ?? code
+        message = parsed.error.message ?? message
+        details = parsed.error.details
+      }
+    } catch {
+      // Non-JSON error body: keep the raw text.
+    }
+    throw new ApiRequestError(res.status, code, message, details)
+  }
+  if (res.status === 204) {
+    return undefined as T
   }
   return res.json() as Promise<T>
 }
@@ -121,4 +218,21 @@ export const api = {
     apiFetch<ManifestData>('/results/manifest', stage ? { stage } : undefined),
   synergy: (params?: { stage?: string; dataset?: string }) =>
     apiFetch<SynergyRow[]>('/results/synergy', params as Record<string, string>),
+
+  estimateExperiment: (body: ExperimentRequest) =>
+    apiFetch<EstimateResponse>('/experiments/estimate', undefined, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  createExperiment: (body: ExperimentRequest) =>
+    apiFetch<JobResponse>('/experiments', undefined, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getExperiment: (runId: string) =>
+    apiFetch<JobResponse>(`/experiments/${encodeURIComponent(runId)}`),
+  cancelExperiment: (runId: string) =>
+    apiFetch<JobResponse>(`/experiments/${encodeURIComponent(runId)}/cancel`, undefined, {
+      method: 'POST',
+    }),
 }

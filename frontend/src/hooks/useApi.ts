@@ -1,5 +1,15 @@
-import { useQuery } from '@tanstack/react-query'
-import { api, type ApiConfig, type SummaryRow, type BreakingPointRow, type RobustnessRow, type SynergyRow } from '@/api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  api,
+  type ApiConfig,
+  type EstimateResponse,
+  type ExperimentRequest,
+  type JobResponse,
+  type SummaryRow,
+  type BreakingPointRow,
+  type RobustnessRow,
+  type SynergyRow,
+} from '@/api/client'
 
 export function useConfig() {
   return useQuery<ApiConfig, Error>({
@@ -56,5 +66,52 @@ export function useManifest(stage?: string) {
     queryKey: ['manifest', stage ?? 'full'],
     queryFn: () => api.manifest(stage ?? 'full'),
     staleTime: 5 * 60_000,
+  })
+}
+
+/** Estimate a custom experiment with the shared backend plan builder. */
+export function useExperimentEstimate(request: ExperimentRequest | null) {
+  return useQuery<EstimateResponse, Error>({
+    queryKey: ['experiment-estimate', request],
+    queryFn: () => api.estimateExperiment(request as ExperimentRequest),
+    enabled: request !== null,
+    staleTime: 15_000,
+    retry: 1,
+  })
+}
+
+/** Poll a custom job only while it is queued or running. */
+export function useExperiment(runId: string | null) {
+  return useQuery<JobResponse, Error>({
+    queryKey: ['experiment', runId],
+    queryFn: () => api.getExperiment(runId as string),
+    enabled: runId !== null,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      return status === 'queued' || status === 'running' ? 1000 : false
+    },
+    retry: 1,
+  })
+}
+
+export function useCreateExperiment() {
+  const queryClient = useQueryClient()
+  return useMutation<JobResponse, Error, ExperimentRequest>({
+    mutationFn: api.createExperiment,
+    onSuccess: (job) => {
+      queryClient.setQueryData(['experiment', job.run_id], job)
+      queryClient.invalidateQueries({ queryKey: ['experiments'] })
+    },
+  })
+}
+
+export function useCancelExperiment() {
+  const queryClient = useQueryClient()
+  return useMutation<JobResponse, Error, string>({
+    mutationFn: api.cancelExperiment,
+    onSuccess: (job) => {
+      queryClient.setQueryData(['experiment', job.run_id], job)
+      queryClient.invalidateQueries({ queryKey: ['experiment', job.run_id] })
+    },
   })
 }
