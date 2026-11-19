@@ -11,6 +11,8 @@ import {
 import { Trophy, Award, Medal, Loader2, Info } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const SINGLE_COMBOS = ['label', 'gaussian', 'outliers', 'missing']
+
 export default function ModelComparison() {
   const { data: config } = useConfig()
   const [selectedDataset, setSelectedDataset] = useState('breast_cancer')
@@ -52,8 +54,7 @@ export default function ModelComparison() {
   // Breaking levels grouped bar chart
   const barChartData = useMemo(() => {
     if (!bpRows) return []
-    const singles = ['label', 'gaussian', 'outliers', 'missing']
-    return singles.map((noise) => {
+    return SINGLE_COMBOS.map((noise) => {
       const item: any = { category: noise }
       bpRows
         .filter((r) => r.combo === noise)
@@ -64,16 +65,28 @@ export default function ModelComparison() {
     })
   }, [bpRows])
 
-  // Aggregate stats per model for the table
+  // Aggregate stats per model for the table.
+  // The ranking rows (BPI/RS/rank) already come from the backend scoped query,
+  // so the remaining aggregates must use the same combo scope.
   const modelStats = useMemo(() => {
     if (!robustnessRows || !bpRows) return []
-    return robustnessRows.map((rob) => {
-      const modelBps = bpRows.filter((b) => b.model === rob.model)
-      const brokenCount = modelBps.filter((b) => b.reached).length
-      const brokenLevels = modelBps.map((b) => (b.reached && b.breaking_level !== null ? b.breaking_level : 6))
-      const meanBreakLevel = brokenLevels.reduce((a, b) => a + b, 0) / brokenLevels.length
+    const scopedBps =
+      selectedScope === 'singles'
+        ? bpRows.filter((b) => SINGLE_COMBOS.includes(b.combo))
+        : bpRows
 
-      // Worst noise type (lowest breaking level)
+    return robustnessRows.map((rob) => {
+      const modelBps = scopedBps.filter((b) => b.model === rob.model)
+      const brokenCount = modelBps.filter((b) => b.reached).length
+      const brokenLevels = modelBps.map((b) =>
+        b.reached && b.breaking_level !== null ? b.breaking_level : 6
+      )
+      const meanBreakLevel =
+        brokenLevels.length > 0
+          ? brokenLevels.reduce((a, b) => a + b, 0) / brokenLevels.length
+          : Number.NaN
+
+      // Worst noise type (lowest breaking level) within the selected scope
       let worstNoise = 'None'
       let minBreak = 7
       modelBps.forEach((b) => {
@@ -86,11 +99,12 @@ export default function ModelComparison() {
       return {
         ...rob,
         brokenCount,
+        totalCombos: modelBps.length,
         meanBreakLevel,
         worstNoise,
       }
     })
-  }, [robustnessRows, bpRows])
+  }, [robustnessRows, bpRows, selectedScope])
 
   if (loadingRobustness) {
     return (
@@ -262,10 +276,10 @@ export default function ModelComparison() {
                     {fmt4(item.RS)}
                   </td>
                   <td className="text-right px-4 py-3 font-mono text-muted-foreground">
-                    {item.brokenCount} / 15
+                    {item.brokenCount} / {item.totalCombos}
                   </td>
                   <td className="text-right px-4 py-3 font-mono text-muted-foreground">
-                    {item.meanBreakLevel.toFixed(2)}
+                    {Number.isFinite(item.meanBreakLevel) ? item.meanBreakLevel.toFixed(2) : '—'}
                   </td>
                   <td className="text-right px-6 py-3 font-mono text-xs text-amber-600 dark:text-amber-400">
                     {item.worstNoise}

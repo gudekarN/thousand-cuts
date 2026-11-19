@@ -28,6 +28,11 @@ def get_results_root() -> Path:
     return (project_root / "results").resolve()
 
 
+def custom_root() -> Path:
+    """Return the root directory that holds all custom experiment runs."""
+    return get_results_root() / "custom"
+
+
 def official_dir(stage: str) -> Path:
     """Return the directory for an official experiment stage.
 

@@ -118,8 +118,9 @@ export default function Overview() {
         </div>
         <p className="text-muted-foreground max-w-2xl">
           <strong>Death by a Thousand Cuts</strong> — a systematic study of how small, realistic noise sources
-          stack up until ML models break. Each noise type is individually harmless, but in combination they
-          push models past their breaking point.
+          stack up until ML models break. Individual noise sources affect models unevenly; at higher
+          severities some single noises already break a model, and combined sources can push models
+          further past their breaking point.
         </p>
       </div>
 

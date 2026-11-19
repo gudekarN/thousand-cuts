@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { useConfig, useSummary, useBreakingPoints } from '@/hooks/useApi'
 import LineBandChart from '@/components/charts/LineBandChart'
+import CustomResultsPage from '@/pages/CustomResultsPage'
 import {
   MODEL_LABELS,
   DATASET_LABELS,
@@ -12,8 +13,7 @@ import {
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export default function ResultsDashboard() {
-  const { runId } = useParams()
+function OfficialResultsDashboard() {
   const { data: config } = useConfig()
 
   const [selectedDataset, setSelectedDataset] = useState('breast_cancer')
@@ -86,7 +86,7 @@ export default function ResultsDashboard() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight">Results Dashboard</h1>
             <span className="text-xs px-2.5 py-0.5 rounded-full font-medium bg-primary/10 text-primary border border-primary/20">
-              {runId ? `Run: ${runId}` : 'Official (Full)'}
+              Official (Full)
             </span>
           </div>
           <p className="text-muted-foreground text-sm mt-1">
@@ -305,4 +305,12 @@ export default function ResultsDashboard() {
       </div>
     </div>
   )
+}
+
+export default function ResultsDashboard() {
+  const { runId } = useParams()
+  if (runId) {
+    return <CustomResultsPage runId={runId} />
+  }
+  return <OfficialResultsDashboard />
 }

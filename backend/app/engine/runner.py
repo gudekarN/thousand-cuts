@@ -40,28 +40,28 @@ class FitSpec:
 
 
 def build_plan(
-    stage: Optional[str] = None, 
+    stage: Optional[str] = None,
     custom_request: Optional[Dict[str, Any]] = None
 ) -> List[FitSpec]:
     """Build the execution plan (list of FitSpecs) for an experiment.
-    
+
     Args:
         stage: Name of the official stage ('mvp', 'stage2', 'full').
         custom_request: Dictionary of custom run configuration.
-        
+
     Returns:
         List of FitSpec objects ordered by dataset, seed, combo, level, model.
     """
     if stage is not None and custom_request is not None:
         raise ValueError("Cannot provide both stage and custom_request")
-        
+
     if stage is None and custom_request is None:
         raise ValueError("Must provide either stage or custom_request")
 
     if stage:
         if stage not in STAGES:
             raise ValueError(f"Unknown stage: {stage}")
-            
+
         if stage == STAGE_MVP:
             datasets = [DATASET_BREAST_CANCER]
             combos = ["label", "gaussian", "outliers", "missing", "label+gaussian"]
@@ -74,10 +74,10 @@ def build_plan(
             datasets = list(DATASET_IDS)
             combos = list_all_combos()
             seeds = list(STAGE_SEEDS[STAGE_FULL])
-            
+
         models = list(MODEL_IDS)
         levels_to_run = [1, 2, 3, 4, 5]
-        
+
     else:
         # Custom request
         dataset = custom_request.get("dataset")
@@ -85,57 +85,69 @@ def build_plan(
         noises = custom_request.get("noises", [])
         mode = custom_request.get("mode")
         level = custom_request.get("level")
-        seed_count = custom_request.get("seed_count")
-        
+        # API contract uses `seeds` as a COUNT (1-10). `seed_count` is kept as an
+        # internal alias so existing callers and tests remain valid.
+        seed_count = custom_request.get("seeds", custom_request.get("seed_count"))
+
         if dataset not in DATASET_IDS:
             raise ValueError(f"Unknown dataset: {dataset}")
-            
+
         if not models or not isinstance(models, list):
             raise ValueError("models must be a non-empty list")
         for m in models:
             if m not in MODEL_IDS:
                 raise ValueError(f"Unknown model: {m}")
-                
+
         if not noises or not isinstance(noises, list):
             raise ValueError("noises must be a non-empty list")
-            
-        combos_set = set()
+
+        # Canonicalise every selected noise (a selection may itself be a
+        # compound string such as "label+gaussian").
+        expanded: List[str] = []
         for n in noises:
             try:
-                can_n = canonical_combo(n)
-                combos_set.add(can_n)
-                # Automatically add single-noise components
-                for single_component in can_n.split("+"):
-                    combos_set.add(single_component)
+                expanded.append(canonical_combo(n))
             except ValueError as e:
                 raise ValueError(f"Invalid noise combo: {e}")
-                
+
+        combos_set = set(expanded)
+        single_selections = [c for c in expanded if "+" not in c]
+        # Multiple individually selected noise types form ONE compound
+        # combination in addition to their single-noise components.
+        if len(single_selections) >= 2:
+            combos_set.add(canonical_combo(single_selections))
+        # Every compound selection contributes its single-noise components
+        # so synergy can be computed for the custom run.
+        for combo in expanded:
+            for single_component in combo.split("+"):
+                combos_set.add(single_component)
+
         # Preserve canonical ordering from list_all_combos
         all_canonical_combos = list_all_combos()
         combos = [c for c in all_canonical_combos if c in combos_set]
-        
+
         if mode not in ["single_level", "sweep"]:
             raise ValueError(f"Unknown mode: {mode}")
-            
+
         if mode == "single_level":
             if level not in [1, 2, 3, 4, 5]:
                 raise ValueError(f"level must be 1-5 for single_level, got {level}")
             levels_to_run = [level]
         else:
             levels_to_run = [1, 2, 3, 4, 5]
-            
+
         if not isinstance(seed_count, int) or not (1 <= seed_count <= 10):
             raise ValueError(f"seed_count must be an integer between 1 and 10, got {seed_count}")
-            
+
         datasets = [dataset]
         seeds = list(range(seed_count))
 
     fits_final = []
     seen = set()
-    
+
     # Clean runs have n_noises=0 and use combo="clean"
     all_combos = [COMBO_CLEAN] + combos
-    
+
     # Ordering: dataset -> seed -> combo -> level -> model
     for d in datasets:
         for s in seeds:
@@ -147,7 +159,7 @@ def build_plan(
                         if spec not in seen:
                             fits_final.append(spec)
                             seen.add(spec)
-                            
+
     return fits_final
 
 
@@ -167,11 +179,11 @@ def _get_split_cached(dataset: str, seed: int) -> tuple[np.ndarray, np.ndarray, 
 
 def run_fit(spec: FitSpec, run_meta: dict) -> dict:
     """Execute exactly one fit specified by FitSpec.
-    
+
     Args:
         spec: FitSpec object defining the run parameters.
         run_meta: Dictionary with run metadata (run_id, config_hash, etc.).
-        
+
     Returns:
         A dictionary row mapping to RAW_COLUMNS in CSV storage.
     """
@@ -199,12 +211,12 @@ def run_fit(spec: FitSpec, run_meta: dict) -> dict:
         "status": "success",
         "error_msg": "",
     }
-    
+
     try:
         X_train, X_test, y_train, y_test = _get_split_cached(spec.dataset, spec.seed)
         row["n_train"] = X_train.shape[0]
         row["n_test"] = X_test.shape[0]
-        
+
         if spec.level == 0 or spec.combo == COMBO_CLEAN:
             X_train_fit = X_train
             y_train_fit = y_train
@@ -213,30 +225,30 @@ def run_fit(spec: FitSpec, run_meta: dict) -> dict:
             X_train_fit, y_train_fit, noise_stats = apply_noise(
                 X_train, y_train, spec.combo, spec.level, spec.seed
             )
-            
+
         row["noise_stats"] = noise_stats  # Will be serialized to JSON string in csv_store
-        
+
         pipeline = build_pipeline(spec.model, spec.seed)
-        
+
         start_time = time.time()
         pipeline.fit(X_train_fit, y_train_fit)
         end_time = time.time()
-        
+
         row["fit_time_s"] = end_time - start_time
-        
+
         y_pred = pipeline.predict(X_test)
         metrics = evaluate(y_test, y_pred)
-        
+
         row["macro_f1"] = metrics["macro_f1"]
         row["accuracy"] = metrics["accuracy"]
-        
+
     except Exception as e:
         row["status"] = "error"
         row["error_msg"] = str(e)
         row["macro_f1"] = float("nan")
         row["accuracy"] = float("nan")
         row["fit_time_s"] = float("nan")
-        
+
     row["timestamp_utc"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     return row
 

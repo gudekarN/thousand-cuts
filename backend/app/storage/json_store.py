@@ -7,7 +7,33 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import time
 from typing import Any, Union
+
+_REPLACE_RETRY_ATTEMPTS = 5
+_REPLACE_RETRY_BASE_DELAY_SECONDS = 0.02
+_REPLACE_RETRY_MAX_DELAY_SECONDS = 0.2
+
+
+def _replace_with_retry(tmp_path: Path, file_path: Path) -> None:
+    """Atomically replace the target, retrying transient Windows file locks.
+
+    On Windows, os.replace can raise PermissionError (WinError 5) when another
+    process has the destination open for reading. Retries give that handle time
+    to close; the write remains atomic and never falls back to a copy.
+    """
+    for attempt in range(_REPLACE_RETRY_ATTEMPTS):
+        try:
+            os.replace(tmp_path, file_path)
+            return
+        except PermissionError:
+            if attempt == _REPLACE_RETRY_ATTEMPTS - 1:
+                raise
+            delay = min(
+                _REPLACE_RETRY_BASE_DELAY_SECONDS * (2 ** attempt),
+                _REPLACE_RETRY_MAX_DELAY_SECONDS,
+            )
+            time.sleep(delay)
 
 
 class _NumpyEncoder(json.JSONEncoder):
@@ -61,7 +87,7 @@ def write_json_atomic(path: Union[str, Path], data: Any, indent: int = 2) -> Non
         tmp_file.flush()
         # Must close the handle before os.replace, especially on Windows
         tmp_file.close()
-        os.replace(tmp_path, file_path)
+        _replace_with_retry(tmp_path, file_path)
     except Exception:
         # Ensure file handle is closed before attempting removal
         if not tmp_file.closed:
