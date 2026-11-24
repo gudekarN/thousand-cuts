@@ -29,6 +29,7 @@ export const NOISE_LABELS: Record<string, string> = {
 }
 
 export const DATASET_LABELS: Record<string, string> = {
+  covertype: 'UCI Covertype',
   breast_cancer: 'Breast Cancer',
   digits: 'Digits',
 }

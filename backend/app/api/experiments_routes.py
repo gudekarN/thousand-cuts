@@ -4,14 +4,16 @@ No ML logic lives here: planning, execution and analysis are delegated to the
 shared engine modules. The API never blocks on model training.
 """
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, Request, status
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from app.api.errors import ApiError
-from app.core.config import STAGES
+from app.core.config import DATASET_IDS, STAGES
 from app.engine.analysis import (
     compute_baselines,
     compute_breaking_points,
@@ -20,8 +22,9 @@ from app.engine.analysis import (
     compute_synergy,
 )
 from app.engine.runner import build_plan
+from app.engine.custom_data import MAX_CSV_BYTES, custom_dataset_info, list_custom_datasets, register_csv
 from app.jobs import manager
-from app.schemas.experiments import EstimateResponse, ExperimentRequest, JobResponse
+from app.schemas.experiments import CustomDatasetInfo, EstimateResponse, ExperimentRequest, JobResponse
 from app.storage.json_store import read_json
 from app.storage.paths import custom_dir, official_dir
 
@@ -36,7 +39,7 @@ DERIVED_FILES = ("summary", "baselines", "breaking_points", "synergy", "robustne
 def _records(df: pd.DataFrame) -> List[Dict[str, Any]]:
     if df is None or df.empty:
         return []
-    return df.where(pd.notna(df), other=None).to_dict(orient="records")
+    return df.astype(object).where(pd.notna(df), other=None).to_dict(orient="records")
 
 
 def _mean_official_fit_time() -> tuple[float, str]:
@@ -166,14 +169,16 @@ async def estimate_experiment(request: ExperimentRequest) -> EstimateResponse:
     except ValueError as exc:
         raise ApiError(422, "INVALID_REQUEST", str(exc)) from exc
 
-    mean_fit, source = _mean_official_fit_time()
+    mean_fit, source = (
+        _mean_official_fit_time() if request.dataset in DATASET_IDS else (None, "unavailable")
+    )
     planned = len(plan)
     combos = sorted({spec.combo for spec in plan})
     seeds = sorted({spec.seed for spec in plan})
     return EstimateResponse(
         planned_fits=planned,
-        estimated_seconds=round(planned * mean_fit, 2),
-        mean_fit_time_s=round(mean_fit, 6),
+        estimated_seconds=round(planned * mean_fit, 2) if mean_fit is not None else None,
+        mean_fit_time_s=round(mean_fit, 6) if mean_fit is not None else None,
         estimate_source=source,
         combos=combos,
         seeds=seeds,
@@ -189,12 +194,56 @@ async def estimate_experiment(request: ExperimentRequest) -> EstimateResponse:
 async def create_experiment(request: ExperimentRequest):
     """Validate a custom request, enqueue a job and return HTTP 202 immediately."""
     try:
-        job = manager.create_job(request.to_planner_request())
+        planner_request = request.to_planner_request()
+        if request.dataset not in DATASET_IDS:
+            planner_request["dataset_name"] = custom_dataset_info(request.dataset)["label"]
+        job = manager.create_job(planner_request)
     except manager.QueueFullError as exc:
         raise ApiError(429, "QUEUE_FULL", str(exc)) from exc
     except ValueError as exc:
         raise ApiError(422, "INVALID_REQUEST", str(exc)) from exc
     return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content=JobResponse(**job).model_dump())
+
+
+@router.get("/experiments/datasets", response_model=list[CustomDatasetInfo], tags=["experiments"])
+def experiment_datasets() -> list[dict]:
+    """List the additional datasets available to custom experiments."""
+    return list_custom_datasets()
+
+
+@router.post(
+    "/experiments/datasets",
+    response_model=CustomDatasetInfo,
+    status_code=status.HTTP_201_CREATED,
+    tags=["experiments"],
+    openapi_extra={"requestBody": {"required": True, "content": {
+        "text/csv": {"schema": {"type": "string", "format": "binary"}}
+    }}},
+)
+async def upload_experiment_dataset(
+    request: Request,
+    filename: str = Query(min_length=1, max_length=255),
+    target: str = Query(min_length=1, max_length=255),
+) -> dict:
+    """Register a UTF-8 CSV with finite numeric features and a classification target."""
+    if request.headers.get("content-type", "").partition(";")[0].strip() != "text/csv":
+        raise ApiError(415, "UNSUPPORTED_MEDIA_TYPE", "Send the CSV as a text/csv request body.")
+    tmp = None
+    try:
+        with NamedTemporaryFile(suffix=".csv", delete=False) as handle:
+            tmp = Path(handle.name)
+            size = 0
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > MAX_CSV_BYTES:
+                    raise ApiError(413, "DATASET_TOO_LARGE", "CSV files can be up to 128 MiB.")
+                handle.write(chunk)
+        return await run_in_threadpool(register_csv, tmp, filename, target)
+    except ValueError as exc:
+        raise ApiError(422, "INVALID_DATASET", str(exc)) from exc
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
 
 
 @router.get("/experiments", tags=["experiments"])

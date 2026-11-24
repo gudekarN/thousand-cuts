@@ -8,3 +8,5 @@ dist/
 .DS_Store
 results/custom/*
 !results/custom/.gitkeep
+results/datasets/*
+!results/datasets/UCI-Covertype.csv

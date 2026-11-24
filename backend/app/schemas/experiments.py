@@ -8,13 +8,14 @@ from typing import Any, Dict, List, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.config import DATASET_IDS, MODEL_IDS
+from app.engine.custom_data import custom_dataset_info
 from app.engine.noise import canonical_combo
 
 
 class ExperimentRequest(BaseModel):
     """Payload for POST /api/experiments and POST /api/experiments/estimate."""
 
-    dataset: str
+    dataset: str = Field(..., min_length=1, max_length=68)
     models: List[str]
     noises: List[str]
     mode: Literal["single_level", "sweep"]
@@ -25,7 +26,7 @@ class ExperimentRequest(BaseModel):
     @classmethod
     def _dataset_known(cls, value: str) -> str:
         if value not in DATASET_IDS:
-            raise ValueError(f"Unknown dataset '{value}'. Must be one of {list(DATASET_IDS)}")
+            custom_dataset_info(value)
         return value
 
     @field_validator("models")
@@ -98,8 +99,19 @@ class JobResponse(BaseModel):
 
 class EstimateResponse(BaseModel):
     planned_fits: int
-    estimated_seconds: float
-    mean_fit_time_s: float
+    estimated_seconds: Optional[float]
+    mean_fit_time_s: Optional[float]
     estimate_source: str
     combos: List[str]
     seeds: List[int]
+
+
+class CustomDatasetInfo(BaseModel):
+    id: str
+    label: str
+    n_samples: int
+    n_features: int
+    n_classes: int
+    source_url: Optional[str] = None
+    target_column: Optional[str] = None
+    sha256: Optional[str] = None

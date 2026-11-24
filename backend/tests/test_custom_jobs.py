@@ -127,6 +127,55 @@ def test_estimate_default_runtime_when_no_official_results(results_root):
     assert body["estimate_source"] == "default"
 
 
+def test_uploaded_csv_runs_through_api_and_worker(results_root):
+    csv_body = "width,height,class\n" + "".join(
+        f"{index},{index + 0.5},{'A' if index < 10 else 'B'}\n" for index in range(20)
+    )
+    params = {"filename": "samples.csv", "target": "class"}
+    upload = client.post("/api/experiments/datasets", params=params, content=csv_body,
+                         headers={"Content-Type": "text/csv"})
+    assert upload.status_code == 201, upload.text
+    dataset = upload.json()
+    assert (dataset["n_samples"], dataset["n_features"], dataset["n_classes"]) == (20, 2, 2)
+    assert dataset in client.get("/api/experiments/datasets").json()
+
+    request = _small_request(dataset=dataset["id"])
+    estimate = client.post("/api/experiments/estimate", json=request).json()
+    assert estimate["planned_fits"] == 2
+    assert estimate["estimated_seconds"] is None
+    response = client.post("/api/experiments", json=request)
+    assert response.status_code == 202, response.text
+    run_id = response.json()["run_id"]
+    job = manager.claim_next_job()
+    assert job["run_id"] == run_id
+    assert worker.execute_job(job) == "completed"
+    results = client.get(f"/api/experiments/{run_id}/results").json()
+    assert results["available"]
+    assert {(row["combo"], row["level"]) for row in results["summary"]} == {
+        ("clean", 0), ("label", 0), ("label", 1)
+    }
+    assert all(row["f1_std"] is None for row in results["summary"])
+    assert {row["dataset"] for row in results["summary"]} == {dataset["id"]}
+    manifest = json.loads((custom_dir(run_id) / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["datasets_meta"] == {dataset["id"]: {
+        key: value for key, value in dataset.items() if value is not None
+    }}
+    assert set(manifest["split_hashes"][dataset["id"]]) == {"0"}
+
+
+def test_invalid_csv_is_not_registered(results_root):
+    response = client.post(
+        "/api/experiments/datasets",
+        params={"filename": "samples.csv", "target": "class"},
+        headers={"Content-Type": "text/csv"},
+        content="width,class\nstring,A\n1,A\n2,A\n3,A\n4,B\n5,B\n6,B\n7,B\n",
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "INVALID_DATASET"
+    datasets = client.get("/api/experiments/datasets").json()
+    assert [(dataset["id"], dataset["n_samples"]) for dataset in datasets] == [("covertype", 581_012)]
+
+
 # ── Request validation ──────────────────────────────────────────────────────
 
 @pytest.mark.parametrize(

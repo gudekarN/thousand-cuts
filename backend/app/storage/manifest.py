@@ -13,7 +13,7 @@ from app.core.config import (
 )
 from app.core.levels import load_levels
 from app.core.hashing import compute_config_hash
-from app.engine.data import load_dataset, split_hashes
+from app.engine.data import dataset_metadata, split_hashes
 from app.storage.json_store import write_json_atomic, read_json
 
 def _get_git_commit() -> Optional[str]:
@@ -68,9 +68,8 @@ def build_manifest(
     # Datasets metadata
     datasets_meta = {}
     all_split_hashes = {}
-    for d in DATASET_IDS:
-        _, _, meta = load_dataset(d)
-        datasets_meta[d] = meta
+    for d in plan_summary.get("datasets", DATASET_IDS):
+        datasets_meta[d] = dataset_metadata(d)
         
         # Split hashes
         all_split_hashes[d] = {}

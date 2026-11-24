@@ -186,6 +186,7 @@ export default function CustomResultsPage({ runId }: { runId: string }) {
     selectedDataset && datasets.includes(selectedDataset)
       ? selectedDataset
       : datasets[0] ?? job?.request.dataset ?? null
+  const datasetName = job?.request.dataset_name ?? DATASET_LABELS[dataset ?? ''] ?? dataset
   const model =
     selectedModel && models.includes(selectedModel)
       ? selectedModel
@@ -362,7 +363,7 @@ export default function CustomResultsPage({ runId }: { runId: string }) {
           <div className="bg-muted/40 border border-border/50 rounded-lg p-3">
             <div className="text-[10px] uppercase font-semibold text-muted-foreground">Dataset</div>
             <div className="font-semibold mt-0.5">
-              {DATASET_LABELS[request.dataset] ?? request.dataset}
+              {request.dataset_name ?? DATASET_LABELS[request.dataset] ?? request.dataset}
             </div>
           </div>
           <div className="bg-muted/40 border border-border/50 rounded-lg p-3">
@@ -469,7 +470,7 @@ export default function CustomResultsPage({ runId }: { runId: string }) {
             <div className="bg-muted/40 border border-border/50 rounded-lg p-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px]">
               <div>
                 <span className="text-muted-foreground">Dataset: </span>
-                {DATASET_LABELS[job.progress.current.dataset] ?? job.progress.current.dataset}
+                {job.request.dataset_name ?? DATASET_LABELS[job.progress.current.dataset] ?? job.progress.current.dataset}
               </div>
               <div>
                 <span className="text-muted-foreground">Model: </span>
@@ -662,13 +663,13 @@ export default function CustomResultsPage({ runId }: { runId: string }) {
                   <StatCard
                     label="Baseline F1"
                     value={fmt4(baseline?.f1_mean)}
-                    sub={`±${fmt4(baseline?.f1_std)}`}
+                    sub={baseline?.f1_std == null ? undefined : `±${fmt4(baseline.f1_std)}`}
                     accent="text-primary"
                   />
                   <StatCard
                     label={`Final F1 (L${maxLevelRow?.level ?? '—'})`}
                     value={fmt4(maxLevelRow?.f1_mean)}
-                    sub={`±${fmt4(maxLevelRow?.f1_std)}`}
+                    sub={maxLevelRow?.f1_std == null ? undefined : `±${fmt4(maxLevelRow.f1_std)}`}
                   />
                   <StatCard
                     label="Abs Drop"
@@ -790,9 +791,9 @@ export default function CustomResultsPage({ runId }: { runId: string }) {
                               <td className="px-6 py-3 font-mono font-bold">L{row.level}</td>
                               <td className="text-right px-4 py-3 font-mono font-medium">
                                 {fmt4(row.f1_mean)}{' '}
-                                <span className="text-xs text-muted-foreground">
-                                  ±{fmt4(row.f1_std)}
-                                </span>
+                                {row.f1_std != null && (
+                                  <span className="text-xs text-muted-foreground"> ±{fmt4(row.f1_std)}</span>
+                                )}
                               </td>
                               <td className="text-right px-4 py-3 font-mono text-muted-foreground">
                                 {fmt4(row.acc_mean)}
@@ -849,7 +850,7 @@ export default function CustomResultsPage({ runId }: { runId: string }) {
                   <div className="bg-card border border-border rounded-xl overflow-hidden">
                     <div className="px-6 py-4 border-b border-border">
                       <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide">
-                        Breaking Points — {DATASET_LABELS[dataset ?? ''] ?? dataset}
+                        Breaking Points — {datasetName}
                       </h2>
                     </div>
                     <div className="overflow-x-auto max-h-[420px]">

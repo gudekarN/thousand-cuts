@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import {
   ApiRequestError,
+  type CustomDataset,
   type ExperimentRequest,
   type JobStatus,
 } from '@/api/client'
@@ -27,8 +28,10 @@ import {
   useConfig,
   useCreateExperiment,
   useExperiment,
+  useExperimentDatasets,
   useExperimentEstimate,
   useHealth,
+  useUploadDataset,
 } from '@/hooks/useApi'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import {
@@ -40,6 +43,11 @@ import {
 import { cn } from '@/lib/utils'
 
 const ACTIVE_RUN_KEY = 'cmdco.activeCustomRunId'
+
+const BENCHMARK_DATASETS: CustomDataset[] = [
+  { id: 'breast_cancer', label: DATASET_LABELS.breast_cancer, n_samples: 569, n_features: 30, n_classes: 2 },
+  { id: 'digits', label: DATASET_LABELS.digits, n_samples: 1797, n_features: 64, n_classes: 10 },
+]
 
 const STATUS_META: Record<JobStatus, { label: string; cls: string; icon: LucideIcon }> = {
   queued: {
@@ -112,6 +120,10 @@ export default function ExperimentSetup() {
     refetch: refetchConfig,
   } = useConfig()
   const health = useHealth()
+  const datasetsQuery = useExperimentDatasets()
+  const upload = useUploadDataset()
+  const [csvFile, setCsvFile] = useState<File | null>(null)
+  const [targetColumn, setTargetColumn] = useState('')
 
   const [selectedDataset, setSelectedDataset] = useState('breast_cancer')
   const [selectedModels, setSelectedModels] = useState<string[]>([
@@ -124,6 +136,21 @@ export default function ExperimentSetup() {
   const [mode, setMode] = useState<'sweep' | 'single_level'>('sweep')
   const [singleLevel, setSingleLevel] = useState<number>(3)
   const [seedCount, setSeedCount] = useState<number>(3)
+
+  const datasets = [...BENCHMARK_DATASETS, ...(datasetsQuery.data ?? [])]
+  const datasetInfo = datasets.find(({ id }) => id === selectedDataset)
+  const selectDataset = (dataset: CustomDataset) => {
+    if (dataset.id === selectedDataset) return
+    setSelectedDataset(dataset.id)
+    if (dataset.n_samples >= 50_000) {
+      setSelectedModels(['decision_tree'])
+      setSeedCount(1)
+    }
+    if (dataset.id === 'covertype') {
+      setSelectedNoises(['label', 'missing'])
+      setMode('sweep')
+    }
+  }
 
   // ── Persisted run id (URL first, then localStorage) ─────────────────────
   const [runId, setRunId] = useState<string | null>(searchParams.get('runId'))
@@ -275,14 +302,12 @@ export default function ExperimentSetup() {
               1. Target Dataset
             </label>
             <div className="grid sm:grid-cols-2 gap-3">
-              {[
-                { id: 'breast_cancer', desc: '569 samples • 30 continuous features • 2 classes' },
-                { id: 'digits', desc: '1,797 samples • 64 pixel features • 10 classes' },
-              ].map((d) => (
+              {datasets.map((d) => (
                 <button
                   key={d.id}
                   type="button"
-                  onClick={() => setSelectedDataset(d.id)}
+                  onClick={() => selectDataset(d)}
+                  aria-pressed={selectedDataset === d.id}
                   className={cn(
                     'p-4 rounded-xl border text-left transition-all',
                     selectedDataset === d.id
@@ -290,10 +315,71 @@ export default function ExperimentSetup() {
                       : 'border-border bg-card hover:bg-muted/30'
                   )}
                 >
-                  <div className="font-semibold text-sm">{DATASET_LABELS[d.id]}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{d.desc}</div>
+                  <div className="font-semibold text-sm break-words">{d.label}</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {d.n_samples.toLocaleString()} rows · {d.n_features} features · {d.n_classes} classes
+                  </div>
                 </button>
               ))}
+            </div>
+            {datasetInfo?.source_url && (
+              <a className="text-sm text-primary underline" href={datasetInfo.source_url} target="_blank" rel="noreferrer">
+                View dataset source
+              </a>
+            )}
+            {datasetInfo && datasetInfo.n_samples >= 50_000 && selectedModels.includes('svm_rbf') && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                RBF SVM can take a long time on this many rows.
+              </p>
+            )}
+            {datasetsQuery.isError && (
+              <p role="alert" className="text-sm text-red-500">Additional datasets could not be loaded.</p>
+            )}
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-sm font-semibold">Upload a classification CSV</p>
+              <p className="text-xs text-muted-foreground">
+                Use a UTF-8 CSV with a header, numeric feature columns without missing values,
+                and one target column. Up to 128 MiB.
+              </p>
+              <div className="flex flex-wrap items-end gap-2">
+                <label className="min-w-0 text-xs">
+                  <span className="block mb-1">CSV file</span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    disabled={upload.isPending}
+                    onChange={(event) => {
+                      setCsvFile(event.target.files?.[0] ?? null)
+                      upload.reset()
+                    }}
+                    className="block max-w-full rounded-lg border border-border p-2"
+                  />
+                </label>
+                <label className="text-xs">
+                  <span className="block mb-1">Target column name</span>
+                  <input
+                    type="text"
+                    value={targetColumn}
+                    maxLength={255}
+                    disabled={upload.isPending}
+                    onChange={(event) => setTargetColumn(event.target.value)}
+                    placeholder="e.g. class"
+                    className="rounded-lg border border-border bg-background p-2"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={!csvFile || !targetColumn.trim() || upload.isPending}
+                  onClick={() => {
+                    if (csvFile) upload.mutate({ file: csvFile, target: targetColumn }, { onSuccess: selectDataset })
+                  }}
+                  className="rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted disabled:opacity-50"
+                >
+                  {upload.isPending ? 'Uploading…' : 'Upload and select'}
+                </button>
+              </div>
+              {upload.isError && <p role="alert" className="text-sm text-red-500">{errorText(upload.error)}</p>}
+              {upload.isSuccess && <p role="status" className="text-sm">{upload.data.label} is ready to use.</p>}
             </div>
           </div>
 
@@ -459,7 +545,7 @@ export default function ExperimentSetup() {
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-1.5 border-b border-border">
                 <span className="text-muted-foreground">Dataset</span>
-                <span className="font-semibold">{DATASET_LABELS[selectedDataset]}</span>
+                <span className="font-semibold break-all">{datasetInfo?.label ?? selectedDataset}</span>
               </div>
               <div className="flex justify-between py-1.5 border-b border-border">
                 <span className="text-muted-foreground">Models</span>
@@ -496,7 +582,7 @@ export default function ExperimentSetup() {
                 <span className="font-mono font-semibold">
                   {validationError
                     ? '—'
-                    : estimate.data
+                    : estimate.data?.estimated_seconds != null
                       ? `~${fmtDuration(estimate.data.estimated_seconds)}`
                       : '—'}
                 </span>
@@ -507,10 +593,11 @@ export default function ExperimentSetup() {
               <div className="text-[10px] text-muted-foreground leading-relaxed">
                 Combinations: <span className="font-mono">{estimate.data.combos.join(', ')}</span>
                 <br />
-                Estimate source:{' '}
-                {estimate.data.estimate_source === 'official_full_mean'
-                  ? 'official Full fit times'
-                  : 'documented default'}
+                {estimate.data.estimate_source === 'unavailable'
+                  ? 'Runtime estimate unavailable for this dataset.'
+                  : estimate.data.estimate_source === 'official_full_mean'
+                    ? 'Estimate based on official Full fit times.'
+                    : 'Estimate based on the documented default.'}
               </div>
             )}
 
@@ -667,7 +754,7 @@ export default function ExperimentSetup() {
                       <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
                         <div>
                           <span className="text-muted-foreground">Dataset: </span>
-                          {DATASET_LABELS[job.progress.current.dataset] ??
+                          {job.request.dataset_name ?? DATASET_LABELS[job.progress.current.dataset] ??
                             job.progress.current.dataset}
                         </div>
                         <div>

@@ -94,11 +94,9 @@ Levels are compared by **index**, not by equal measured harm across noise types 
 | 3 | Calibration and freeze | Done. T1-T6 passed, `KEEP_A`, frozen 2026-10-05 |
 | 4 | Stage 2 (1,824 fits) | Done |
 | 5 | Full run (6,080 fits) | Done. Results locked, `CHECKSUMS.txt` written |
-| 6 | API and job worker | **In progress.** Read-only result routes exist; custom-job worker and experiment routes not yet built |
+| 6 | API and job worker | Official result routes, queued custom jobs, and CSV uploads are implemented |
 | 7 | Frontend (6 pages) | **In progress.** All six page components exist; verify against real data and run `typecheck` / `build` |
 | 8 | Integration, QA, report | Not started |
-
-> Status above is inferred from the repository contents (`results/official/*`, `app/jobs/` containing only `__init__.py`, the placeholder lifespan in `main.py`). Please correct it against your `memory.md`.
 
 ---
 
@@ -127,6 +125,26 @@ npm run dev          # Vite dev server on http://localhost:5173
 npm run typecheck
 npm run build
 ```
+
+### Custom datasets and the Covertype demo
+
+1. Open **Experiment Setup** and select **UCI Covertype** to use all 581,012 records from the [UCI forest cover dataset](https://archive.ics.uci.edu/dataset/31/covertype). On first use, the worker downloads and caches the dataset. The preset selects Decision Tree, label noise and missing values, a five-level sweep, and one seed.
+2. To use your own dataset, choose **Upload a classification CSV**, select a UTF-8 CSV of up to 128 MiB, and enter the exact target column name. Supply finite numeric feature values, unique column names, and labels with enough examples for stratified splitting. Numeric and text class labels are supported. Uploaded datasets stay selectable after a reload.
+3. Start the job, then open **View Results**. Every run uses a stratified 70/30 split, injects noise into the training split, and scores on the original test split. Covertype uses 406,708 training rows and 174,304 test rows. Uploaded data and the Covertype cache are kept under `results/datasets/`. Jobs and metrics are under `results/custom/`.
+
+The API lists additional datasets with `GET /api/experiments/datasets`. To register a file, send it as the raw `text/csv` body to `POST /api/experiments/datasets?filename=example.csv&target=class`. Use the returned `id` for the `dataset` field in experiment requests.
+
+The [Covertype CSV](results/datasets/UCI-Covertype.csv) contains all 581,012 rows with added column headers. Use `Cover_Type` as the upload target. Source is Jock Blackard (1998), [Covertype, UCI Machine Learning Repository](https://doi.org/10.24432/C50K5N), licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+The Covertype preset completed 16 fits using seed 0. Its clean Macro F1 was **0.8950**, giving a breaking threshold of **0.8055**.
+
+| Training noise | Breaking level | Macro F1 at breaking level | Level 5 Macro F1 |
+|---|---:|---:|---:|
+| Label | 1 | 0.7327 | 0.3560 |
+| Missing values | 3 | 0.7689 | 0.5925 |
+| Label and missing values | 1 | 0.7674 | 0.2434 |
+
+This is a separate one-model, one-seed demonstration. The official benchmark covers Breast Cancer and Digits.
 
 ### Official experiment scripts (CLI only)
 

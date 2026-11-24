@@ -4,6 +4,7 @@ Builds deterministic execution plans for official stages and custom runs.
 """
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
@@ -24,9 +25,11 @@ import json
 import numpy as np
 
 from app.engine.data import split
+from app.engine.custom_data import custom_dataset_info
 from app.engine.noise import apply_noise, list_all_combos, canonical_combo
 from app.engine.pipelines import build_pipeline
 from app.engine.metrics import evaluate
+from app.storage.paths import get_results_root
 
 
 @dataclass(frozen=True)
@@ -90,7 +93,9 @@ def build_plan(
         seed_count = custom_request.get("seeds", custom_request.get("seed_count"))
 
         if dataset not in DATASET_IDS:
-            raise ValueError(f"Unknown dataset: {dataset}")
+            if not isinstance(dataset, str):
+                raise ValueError("Select a dataset.")
+            custom_dataset_info(dataset)
 
         if not models or not isinstance(models, list):
             raise ValueError("models must be a non-empty list")
@@ -166,14 +171,22 @@ def build_plan(
 _SPLIT_CACHE = {}
 
 
+@lru_cache(maxsize=1)
+def _custom_split(root: Path, dataset: str, seed: int) -> tuple[np.ndarray, ...]:
+    return split(dataset, seed)
+
+
 def _get_split_cached(dataset: str, seed: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Retrieve train/test split from cache, computing it if necessary.
     Returns copies to ensure immutability of cached arrays.
     """
-    key = (dataset, seed)
-    if key not in _SPLIT_CACHE:
-        _SPLIT_CACHE[key] = split(dataset, seed)
-    X_tr, X_te, y_tr, y_te = _SPLIT_CACHE[key]
+    if dataset in DATASET_IDS:
+        key = (dataset, seed)
+        if key not in _SPLIT_CACHE:
+            _SPLIT_CACHE[key] = split(dataset, seed)
+        X_tr, X_te, y_tr, y_te = _SPLIT_CACHE[key]
+    else:
+        X_tr, X_te, y_tr, y_te = _custom_split(get_results_root(), dataset, seed)
     return X_tr.copy(), X_te.copy(), y_tr.copy(), y_te.copy()
 
 
@@ -319,11 +332,14 @@ def execute_plan(
     # Write manifest on first run (not resuming or manifest doesn't exist)
     if not manifest_path.exists():
         seeds = sorted({spec.seed for spec in plan})
+        plan_summary = {"planned_fits": len(plan), "seeds": seeds}
+        if run_type == "custom":
+            plan_summary["datasets"] = sorted({spec.dataset for spec in plan})
         manifest = build_manifest(
             run_id=run_meta.get("run_id", ""),
             run_type=run_type,
             stage=stage,
-            plan_summary={"planned_fits": len(plan), "seeds": seeds},
+            plan_summary=plan_summary,
             requested_config=run_meta.get("requested_config", {}),
         )
         write_json_atomic(manifest_path, manifest)

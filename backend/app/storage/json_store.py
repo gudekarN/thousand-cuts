@@ -10,9 +10,7 @@ import tempfile
 import time
 from typing import Any, Union
 
-_REPLACE_RETRY_ATTEMPTS = 5
-_REPLACE_RETRY_BASE_DELAY_SECONDS = 0.02
-_REPLACE_RETRY_MAX_DELAY_SECONDS = 0.2
+_FILE_LOCK_RETRY_DELAYS = (0.02, 0.04, 0.08, 0.16, None)
 
 
 def _replace_with_retry(tmp_path: Path, file_path: Path) -> None:
@@ -22,17 +20,13 @@ def _replace_with_retry(tmp_path: Path, file_path: Path) -> None:
     process has the destination open for reading. Retries give that handle time
     to close; the write remains atomic and never falls back to a copy.
     """
-    for attempt in range(_REPLACE_RETRY_ATTEMPTS):
+    for delay in _FILE_LOCK_RETRY_DELAYS:
         try:
             os.replace(tmp_path, file_path)
             return
         except PermissionError:
-            if attempt == _REPLACE_RETRY_ATTEMPTS - 1:
+            if delay is None:
                 raise
-            delay = min(
-                _REPLACE_RETRY_BASE_DELAY_SECONDS * (2 ** attempt),
-                _REPLACE_RETRY_MAX_DELAY_SECONDS,
-            )
             time.sleep(delay)
 
 
@@ -114,5 +108,12 @@ def read_json(path: Union[str, Path]) -> Any:
         json.JSONDecodeError: If the file is not valid JSON.
     """
     file_path = Path(path)
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    for delay in _FILE_LOCK_RETRY_DELAYS:
+        try:
+            with file_path.open("r", encoding="utf-8") as handle:
+                return json.load(handle)
+        except PermissionError:
+            # On Windows, a concurrent atomic replace may briefly lock the path.
+            if os.name != "nt" or delay is None:
+                raise
+            time.sleep(delay)

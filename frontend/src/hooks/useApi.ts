@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   api,
   type ApiConfig,
+  type CustomDataset,
   type EstimateResponse,
   type ExperimentRequest,
   type ExperimentResultsResponse,
@@ -27,6 +28,26 @@ export function useHealth() {
     queryFn: api.health,
     refetchInterval: 30_000,
     retry: 1,
+  })
+}
+
+export function useExperimentDatasets() {
+  return useQuery({
+    queryKey: ['experiment-datasets'],
+    queryFn: api.experimentDatasets,
+  })
+}
+
+export function useUploadDataset() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ file, target }: { file: File; target: string }) => api.uploadDataset(file, target),
+    onSuccess: (dataset) => {
+      queryClient.setQueryData<CustomDataset[]>(['experiment-datasets'], (old = []) =>
+        [...old.filter(({ id }) => id !== dataset.id), dataset]
+      )
+      queryClient.invalidateQueries({ queryKey: ['experiment-datasets'] })
+    },
   })
 }
 

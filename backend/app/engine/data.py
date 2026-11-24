@@ -3,6 +3,9 @@ import numpy as np
 from sklearn.datasets import load_breast_cancer, load_digits
 from sklearn.model_selection import train_test_split
 
+from app.core.config import DATASET_IDS, TEST_SIZE
+from app.engine.custom_data import load_custom_dataset
+
 _CACHE = {}
 
 def load_dataset(name: str) -> tuple[np.ndarray, np.ndarray, dict]:
@@ -10,8 +13,13 @@ def load_dataset(name: str) -> tuple[np.ndarray, np.ndarray, dict]:
     Load dataset by name, cache it, and return a copy.
     Returns: X (float64), y (int), meta (dict with n_samples, n_features, n_classes)
     """
-    if name not in ["breast_cancer", "digits"]:
-        raise ValueError(f"Unknown dataset: {name}")
+    X, y, meta = _dataset_arrays(name)
+    return X.copy(), y.copy(), meta.copy()
+
+
+def _dataset_arrays(name: str) -> tuple[np.ndarray, np.ndarray, dict]:
+    if name not in DATASET_IDS:
+        return load_custom_dataset(name)
 
     if name not in _CACHE:
         if name == "breast_cancer":
@@ -29,16 +37,19 @@ def load_dataset(name: str) -> tuple[np.ndarray, np.ndarray, dict]:
         }
         _CACHE[name] = (X, y, meta)
 
-    X_cached, y_cached, meta_cached = _CACHE[name]
-    return X_cached.copy(), y_cached.copy(), meta_cached.copy()
+    return _CACHE[name]
+
+
+def dataset_metadata(name: str) -> dict:
+    return _dataset_arrays(name)[2].copy()
 
 def split(name: str, seed: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Perform a stratified 70/30 train/test split.
     """
-    X, y, _ = load_dataset(name)
+    X, y, _ = _dataset_arrays(name)
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.3, stratify=y, random_state=seed
+        X, y, test_size=TEST_SIZE, stratify=y, random_state=seed
     )
     return X_train, X_test, y_train, y_test
 
@@ -46,12 +57,12 @@ def split_hashes(name: str, seed: int) -> tuple[str, str]:
     """
     Return SHA-256 hashes of train and test indices for reproducibility checks.
     """
-    _, y, meta = load_dataset(name)
+    _, y, meta = _dataset_arrays(name)
     n_samples = meta["n_samples"]
     indices = np.arange(n_samples)
 
     train_idx, test_idx = train_test_split(
-        indices, test_size=0.3, stratify=y, random_state=seed
+        indices, test_size=TEST_SIZE, stratify=y, random_state=seed
     )
 
     # Cast to int64 to ensure cross-platform hash consistency

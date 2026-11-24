@@ -286,7 +286,7 @@ export default function ExperimentDetails() {
             <div className="bg-muted/40 border border-border/50 rounded-lg p-3">
               <div className="text-[10px] uppercase font-semibold text-muted-foreground">Dataset</div>
               <div className="font-semibold mt-0.5">
-                {request ? DATASET_LABELS[request.dataset] ?? request.dataset : '—'}
+                {request ? request.dataset_name ?? DATASET_LABELS[request.dataset] ?? request.dataset : '—'}
               </div>
             </div>
             <div className="bg-muted/40 border border-border/50 rounded-lg p-3">

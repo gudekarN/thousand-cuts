@@ -32,6 +32,7 @@ export type JobStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancell
 
 export interface ExperimentRequest {
   dataset: string
+  dataset_name?: string
   models: string[]
   noises: string[]
   mode: ExperimentMode
@@ -41,11 +42,21 @@ export interface ExperimentRequest {
 
 export interface EstimateResponse {
   planned_fits: number
-  estimated_seconds: number
-  mean_fit_time_s: number
+  estimated_seconds: number | null
+  mean_fit_time_s: number | null
   estimate_source: string
   combos: string[]
   seeds: number[]
+}
+
+export interface CustomDataset {
+  id: string
+  label: string
+  n_samples: number
+  n_features: number
+  n_classes: number
+  source_url?: string | null
+  target_column?: string | null
 }
 
 export interface JobProgress {
@@ -110,9 +121,9 @@ export interface SummaryRow {
   level: number
   n_seeds: number
   f1_mean: number
-  f1_std: number
+  f1_std: number | null
   acc_mean: number
-  acc_std: number
+  acc_std: number | null
   fit_time_mean: number
   rel_f1: number
   drop_abs: number
@@ -250,6 +261,13 @@ async function apiFetch<T>(path: string, params?: Record<string, string>, init?:
 export const api = {
   health: () => apiFetch<HealthResponse>('/health'),
   config: () => apiFetch<ApiConfig>('/config'),
+  experimentDatasets: () => apiFetch<CustomDataset[]>('/experiments/datasets'),
+  uploadDataset: (file: File, target: string) =>
+    apiFetch<CustomDataset>('/experiments/datasets', { filename: file.name, target }, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: file,
+    }),
   summary: (params?: { stage?: string; dataset?: string; model?: string; combo?: string }) =>
     apiFetch<SummaryRow[]>('/results/summary', params as Record<string, string>),
   breakingPoints: (params?: { stage?: string; dataset?: string; model?: string; combo?: string }) =>
